@@ -294,24 +294,28 @@ export function EstablishmentAnalytics({ range }: { range: DateRange }) {
             <StatCard
               icon={Building2}
               label="Total Establishments"
+              info="Total registered resorts, dive centers, and boat operators on municipal record."
               value={String(totalEstablishments)}
               sample={isDemo}
             />
             <StatCard
               icon={Shield}
               label="Active Permits"
+              info="Establishments holding active, compliant business and municipal tourism accreditation permits."
               value={isLive ? (isLiveData ? String(activePermits) : "—") : String(activePermits)}
               sample={isDemo}
             />
             <StatCard
               icon={MapPin}
               label="Top Barangay"
+              info="The coastal barangay hosting the highest concentration of registered dive businesses."
               value={topBarangay}
               sample={isDemo}
             />
             <StatCard
               icon={ClipboardList}
               label="Pending Applications"
+              info="New resort or operator registration applications submitted and awaiting tourism office review."
               value={isLive ? (isLiveData ? String(pendingApplications) : "—") : String(pendingApplications)}
               delta={
                 pendingApplications > 0
@@ -331,7 +335,7 @@ export function EstablishmentAnalytics({ range }: { range: DateRange }) {
 
         <Reveal delay={80}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <SectionCard title="Establishments by Location" sample={isDemo}>
+            <SectionCard title="Establishments by Location" insight="establishment.byLocation" sample={isDemo}>
               {isEmptyChartData(byBarangayData) ? (
                 <ChartEmptyState className="h-64" />
               ) : (
@@ -368,7 +372,7 @@ export function EstablishmentAnalytics({ range }: { range: DateRange }) {
               )}
             </SectionCard>
 
-            <SectionCard title="Compliance & Permit Status" sample={isDemo}>
+            <SectionCard title="Compliance & Permit Status" insight="establishment.permitStatus" sample={isDemo}>
               {isEmptyChartData(permitStatusData) ? (
                 <ChartEmptyState className="h-64" />
               ) : (
@@ -418,6 +422,7 @@ export function EstablishmentAnalytics({ range }: { range: DateRange }) {
         <Reveal delay={160}>
           <SectionCard
             title="Manifests & Credits by Establishment"
+            insight="establishment.manifestsAndCredits"
             sample={isDemo}
           >
             {isEmptyChartData(activityData) ? (
@@ -493,7 +498,7 @@ export function EstablishmentAnalytics({ range }: { range: DateRange }) {
         </Reveal>
 
         <Reveal delay={240}>
-          <SectionCard title="Top Establishments Leaderboard" sample={isDemo}>
+          <SectionCard title="Top Establishments Leaderboard" insight="establishment.leaderboard" sample={isDemo}>
             <Table>
               <TableHeader>
                 <TableRow className="bg-secondary/50">

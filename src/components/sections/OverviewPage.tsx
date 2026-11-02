@@ -484,6 +484,7 @@ export function OverviewPage({
                 deltaLabel: "vs previous period",
                 up: tDelta != null ? tDelta >= 0 : undefined,
                 sample,
+                info: "Total tourist profiles registered in the system within the selected date range vs the preceding equivalent duration.",
                 target: {
                   section: "tourists",
                   q: "",
@@ -498,6 +499,7 @@ export function OverviewPage({
                 label: "Active Users",
                 value: ovLive ? String(m?.activeIds ?? 0) : "358",
                 sample,
+                info: "Tourists with at least one validated dive pass or recorded activity within the last 30 days.",
                 target: { section: "tourists", status: "Active", q: "" },
               },
               {
@@ -510,6 +512,7 @@ export function OverviewPage({
                 deltaLabel: "vs yesterday",
                 up: ovLive ? dayDiff >= 0 : undefined,
                 sample,
+                info: "Total divers recorded on boat manifests submitted and cleared for today's calendar date.",
                 target: { section: "dive-ops", tab: "manifestos" },
               },
               {
@@ -517,6 +520,7 @@ export function OverviewPage({
                 label: "Approved Operators",
                 value: String(approvedCount),
                 sample,
+                info: "Accredited dive resorts and boat operators holding active municipal permits.",
                 target: { section: "establishments", tab: "registered" },
               },
               {
@@ -524,15 +528,23 @@ export function OverviewPage({
                 label: "Active Sites",
                 value: ovLive ? String(m?.activeSites ?? 0) : "12",
                 sample: !ovSitesLive,
+                info: "Marine sanctuaries and dive sites with at least one logged boat manifest in the selected period.",
                 target: { section: "dive-ops", tab: "sites", q: "" },
               },
             ];
             return cards.map((s) => (
-              <button
+              <div
                 key={s.label}
-                type="button"
+                role="button"
+                tabIndex={0}
                 aria-label={`View ${s.label}`}
                 onClick={() => setFilters(s.target)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setFilters(s.target);
+                  }
+                }}
                 className="text-left w-full h-full cursor-pointer rounded-xl focus-visible:outline-2 focus-visible:outline-primary"
               >
                 <StatCard
@@ -543,8 +555,9 @@ export function OverviewPage({
                   deltaLabel={s.deltaLabel}
                   up={s.up}
                   sample={s.sample}
+                  info={s.info}
                 />
-              </button>
+              </div>
             ));
           })()}
         </div>
@@ -568,6 +581,7 @@ export function OverviewPage({
           <SectionCard
             title="Monthly Trends"
             subtitle="Grouped by manifest record date"
+            insight="overview.monthlyTrends"
             className="xl:col-span-2"
             action={
               <Tabs
@@ -658,7 +672,7 @@ export function OverviewPage({
             </div>
           </SectionCard>
 
-          <SectionCard title="Nationality Mix">
+          <SectionCard title="Nationality Mix" insight="overview.nationalityMix">
             <div className="h-72">
               {isEmptyChartData(scaledNationality) ? (
                 <ChartEmptyState className="h-72" />
@@ -714,7 +728,7 @@ export function OverviewPage({
       {/* Charts row 2 */}
       <Reveal>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-          <SectionCard title="Dive Level">
+          <SectionCard title="Dive Level" insight="overview.diveLevel">
             <div className="h-56">
               {isEmptyChartData(scaledDiveLevel) ? (
                 <ChartEmptyState className="h-56" />
@@ -759,7 +773,7 @@ export function OverviewPage({
             </div>
           </SectionCard>
 
-          <SectionCard title="Dive Type">
+          <SectionCard title="Dive Type" insight="overview.diveType">
             <div className="h-56">
               {isEmptyChartData(scaledDiveType) ? (
                 <ChartEmptyState className="h-56" />
@@ -797,7 +811,7 @@ export function OverviewPage({
             </div>
           </SectionCard>
 
-          <SectionCard title="Top Dive Sites" className="xl:col-span-2">
+          <SectionCard title="Top Dive Sites" insight="overview.topSites" className="xl:col-span-2">
             <div className="h-56">
               {isEmptyChartData(scaledTopSites) ? (
                 <ChartEmptyState className="h-56" />
