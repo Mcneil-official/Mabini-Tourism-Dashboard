@@ -253,6 +253,7 @@ export function DiveActivityAnalytics({ range }: { range: DateRange }) {
             <StatCard
               icon={Waves}
               label="Total Divers"
+              info="Total individual diver entries logged on boat manifests submitted during this period."
               value={
                 isLive
                   ? isLiveData
@@ -272,6 +273,7 @@ export function DiveActivityAnalytics({ range }: { range: DateRange }) {
             <StatCard
               icon={BarChart3}
               label="Most Popular Type"
+              info="The predominant dive category (e.g. Scuba, Free Diving, Macro) by share of filed manifests."
               value={
                 isLive
                   ? isLiveData && topType
@@ -292,7 +294,7 @@ export function DiveActivityAnalytics({ range }: { range: DateRange }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Reveal delay={80}>
-          <SectionCard title="Dive Type Breakdown">
+          <SectionCard title="Dive Type Breakdown" insight="overview.diveType">
             {isEmptyChartData(diveTypeData) ? (
               <ChartEmptyState className="h-[300px]" />
             ) : (
@@ -345,6 +347,7 @@ export function DiveActivityAnalytics({ range }: { range: DateRange }) {
           <SectionCard
             title="Depth Distribution"
             subtitle="Dives grouped by destination site depth rating."
+            insight="diveActivity.depthDistribution"
             sample={isDemo && !m?.depths?.length}
           >
             {isEmptyChartData(depthData) ? (
@@ -391,6 +394,7 @@ export function DiveActivityAnalytics({ range }: { range: DateRange }) {
         <SectionCard
           title="Hourly Activity Pattern"
           subtitle="Boat departure hours from filed manifests (Asia/Manila)."
+          insight="diveActivity.hourlyLaunch"
           sample={isDemo && !m?.hourly?.length}
         >
           {isEmptyChartData(hourlyData) ? (
@@ -443,7 +447,7 @@ export function DiveActivityAnalytics({ range }: { range: DateRange }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Reveal delay={200}>
-          <SectionCard title="Site × Dive Type">
+          <SectionCard title="Site × Dive Type" insight="diveActivity.siteDiveType">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -479,6 +483,7 @@ export function DiveActivityAnalytics({ range }: { range: DateRange }) {
           <SectionCard
             title="Seasonal Trends"
             subtitle="Philippine monsoon and tropical tourism cycles."
+            insight="diveActivity.seasonalDistribution"
           >
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {seasonalData.map((s) => (
@@ -521,6 +526,7 @@ export function DiveActivityAnalytics({ range }: { range: DateRange }) {
           <SectionCard
             title="Dive Site Capacity Utilization"
             subtitle="Divers logged vs the maximum recorded per manifest, summed by site."
+            insight="diveActivity.carryingCapacity"
           >
             {isEmptyChartData(capacityDataLive) ? (
               <ChartEmptyState className="h-[300px]" />

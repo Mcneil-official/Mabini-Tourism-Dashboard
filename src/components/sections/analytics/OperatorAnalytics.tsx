@@ -163,6 +163,7 @@ export function OperatorAnalytics({ range }: { range: DateRange }) {
           <StatCard
             icon={Users}
             label="Active Operators"
+            info="Operators who submitted at least one manifest during the selected period vs total registered operators."
             value={opKpis.total > 0 ? `${opKpis.active} of ${opKpis.total}` : String(opKpis.active)}
             delta={opKpis.live ? kpiDelta(opKpis.aDelta) : "+2"}
             deltaLabel="vs previous period"
@@ -172,6 +173,7 @@ export function OperatorAnalytics({ range }: { range: DateRange }) {
           <StatCard
             icon={ScrollText}
             label="Manifestos Filed"
+            info="Total boat manifests officially submitted and approved within this time window."
             value={opKpis.manifestos.toLocaleString()}
             delta={opKpis.live ? kpiDelta(opKpis.mDelta) : "+14"}
             deltaLabel="vs previous period"
@@ -181,6 +183,7 @@ export function OperatorAnalytics({ range }: { range: DateRange }) {
           <StatCard
             icon={Waves}
             label="Divers Logged"
+            info="Total individual diver entries recorded on submitted manifests for this period."
             value={opKpis.divers.toLocaleString()}
             delta={opKpis.live ? kpiDelta(opKpis.dDelta) : "+80"}
             deltaLabel="vs previous period"
@@ -190,6 +193,7 @@ export function OperatorAnalytics({ range }: { range: DateRange }) {
           <StatCard
             icon={CreditCard}
             label="Revenue Generated"
+            info="Municipal pass and conservation fee revenue collected and verified for these operators."
             value={`\u20B1${Math.round(opKpis.revenue).toLocaleString()}`}
             delta={
               opKpis.live
@@ -207,7 +211,7 @@ export function OperatorAnalytics({ range }: { range: DateRange }) {
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <SectionCard title="Operator Revenue Contribution (₱)" sample={!isLive}>
+          <SectionCard title="Operator Revenue Contribution (₱)" insight="operator.revenue" sample={!isLive}>
             <div className="h-80">
               {isEmptyChartData(revenueSortedOperators) ? (
                 <ChartEmptyState className="h-80" />
@@ -260,7 +264,7 @@ export function OperatorAnalytics({ range }: { range: DateRange }) {
             </div>
           </SectionCard>
 
-          <SectionCard title="Manifestos & Credits by Operator" sample={!isLive}>
+          <SectionCard title="Manifestos & Credits by Operator" insight="operator.manifestsAndCredits" sample={!isLive}>
             <div className="h-80">
               {isEmptyChartData(scaledOperatorActivity) ? (
                 <ChartEmptyState className="h-80" />
@@ -338,6 +342,7 @@ export function OperatorAnalytics({ range }: { range: DateRange }) {
 
           <SectionCard
             title="Operator Leaderboard"
+            insight="operator.leaderboard"
             className="xl:col-span-2"
             sample={!isLive}
           >

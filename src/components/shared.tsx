@@ -6,9 +6,26 @@ import {
   type ReactNode,
 } from "react";
 import { motion, useInView, AnimatePresence } from "framer-motion";
-import { ArrowUpRight, ArrowDownRight, X, type LucideIcon } from "lucide-react";
+import {
+  ArrowUpRight,
+  ArrowDownRight,
+  X,
+  Sparkles,
+  Info,
+  Lightbulb,
+  type LucideIcon,
+} from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import {
+  resolveChartInsight,
+  type ChartInsight,
+} from "@/lib/chart-insights";
 import {
   TableCell,
   TableRow,
@@ -143,6 +160,7 @@ export function StatCard({
   deltaLabel = "vs previous period",
   up = true,
   sample = false,
+  info,
 }: {
   icon: LucideIcon;
   label: string;
@@ -152,13 +170,48 @@ export function StatCard({
   up?: boolean;
   /** Mark a demo-only figure so connected deployments cannot imply it is real. */
   sample?: boolean;
+  /** Concise metric formula or analytical context displayed in a lightweight popover. */
+  info?: string;
 }) {
   return (
     <Card className="p-5 shadow-elegant border-border/60 hover:border-primary/30 hover:shadow-glow-sm transition-all hover-lift h-full flex flex-col">
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground">
-            {label}
+            <span>{label}</span>
+            {info && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.stopPropagation();
+                      }
+                    }}
+                    aria-label={`About ${label}`}
+                    title="Metric definition & formula"
+                    className="cursor-pointer text-muted-foreground/60 hover:text-foreground inline-flex items-center p-0.5 rounded transition-colors focus-visible:outline-none"
+                  >
+                    <Info className="size-3" />
+                  </span>
+                </PopoverTrigger>
+                <PopoverContent
+                  side="top"
+                  align="start"
+                  sideOffset={6}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-64 p-3 text-xs text-muted-foreground shadow-lg leading-relaxed z-50 bg-card/95 backdrop-blur-md border-border/80"
+                >
+                  <p className="font-semibold text-foreground text-[11px] uppercase tracking-wider mb-1">
+                    {label}
+                  </p>
+                  <p>{info}</p>
+                </PopoverContent>
+              </Popover>
+            )}
             {sample && (
               <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-semibold normal-case tracking-normal text-amber-700 dark:text-amber-400">
                 Sample
@@ -243,10 +296,89 @@ export function CardGridSkeleton({ count = 3 }: { count?: number }) {
   );
 }
 
+export function ChartInsightButton({
+  title,
+  insight,
+}: {
+  title?: ReactNode;
+  insight: ChartInsight | string;
+}) {
+  const data = resolveChartInsight(insight);
+  if (!data) return null;
+
+  const displayTitle = typeof title === "string" ? title : "Chart Guide & Insights";
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={`Guide & Insights for ${displayTitle}`}
+          title="Chart Guide & Insights"
+          className="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground/80 hover:text-primary hover:bg-primary/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer shrink-0"
+        >
+          <Sparkles className="size-3.5 text-primary" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        sideOffset={6}
+        className="w-80 sm:w-96 p-4 shadow-xl border-border/80 bg-card/95 backdrop-blur-md rounded-xl space-y-3 z-50 text-left"
+      >
+        <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-2.5">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="size-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <Sparkles className="size-4" />
+            </div>
+            <div className="min-w-0">
+              <h4 className="font-display font-semibold text-xs truncate leading-tight">
+                {displayTitle}
+              </h4>
+              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                Guide & Analytical Insights
+              </p>
+            </div>
+          </div>
+          <Badge variant="outline" className="text-[9px] font-medium bg-secondary/50 shrink-0">
+            MTO Guide
+          </Badge>
+        </div>
+
+        {/* Section 1: About this chart */}
+        <div className="space-y-1">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+            <Info className="size-3.5 text-primary shrink-0" />
+            <span>About this chart</span>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed pl-5">
+            {data.description}
+          </p>
+        </div>
+
+        {/* Section 2: Insights */}
+        {((data.insights && data.insights.length > 0) || (data.takeaways && data.takeaways.length > 0)) && (
+          <div className="space-y-1.5 pt-1 border-t border-border/40">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+              <Lightbulb className="size-3.5 text-amber-500 shrink-0" />
+              <span>Insights we can get from this chart</span>
+            </div>
+            <ul className="text-xs text-muted-foreground space-y-1.5 pl-5 list-disc marker:text-primary/60 leading-relaxed">
+              {(data.insights ?? data.takeaways ?? []).map((point, i) => (
+                <li key={i}>{point}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function SectionCard({
   title,
   subtitle,
   action,
+  insight,
   sample = false,
   children,
   className = "",
@@ -254,6 +386,7 @@ export function SectionCard({
   title: ReactNode;
   subtitle?: string;
   action?: ReactNode;
+  insight?: ChartInsight | string;
   /** Panel is rendered from demo fixtures, not the live database. */
   sample?: boolean;
   children?: ReactNode;
@@ -265,6 +398,7 @@ export function SectionCard({
         <div>
           <div className="flex items-center gap-2">
             <h3 className="font-display font-semibold">{title}</h3>
+            {insight && <ChartInsightButton title={title} insight={insight} />}
             {sample && (
               <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
                 Sample data

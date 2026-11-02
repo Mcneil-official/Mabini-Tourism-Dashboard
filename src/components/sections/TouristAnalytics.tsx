@@ -578,6 +578,7 @@ export function TouristAnalytics({ range }: { range: DateRange }) {
             <StatCard
               icon={Users}
               label="Total Tourists"
+              info="Count of distinct registered tourist accounts created or active within the selected date range."
               value={m || !isDemo ? (m ? total : "-") : total}
               delta={m ? signed(totalDelta) : undefined}
               deltaLabel="vs previous period"
@@ -587,6 +588,7 @@ export function TouristAnalytics({ range }: { range: DateRange }) {
             <StatCard
               icon={Globe}
               label="Nationalities Represented"
+              info="Count of unique countries of origin declared across all registered visitors in this period."
               value={m || !isDemo ? (m ? nationalities : "-") : nationalities}
               delta={m?.newNationalities ? `+${m.newNationalities}` : undefined}
               deltaLabel="first seen this period"
@@ -596,12 +598,14 @@ export function TouristAnalytics({ range }: { range: DateRange }) {
             <StatCard
               icon={TrendingUp}
               label="Avg Divers / Tourist"
+              info="Average number of active divers associated per tourist group or booking record."
               value={m || !isDemo ? (m ? avgDivers : "-") : avgDivers}
               sample={isDemo}
             />
             <StatCard
               icon={Award}
               label="Most Common Level"
+              info="The diver certification credential held by the highest percentage of registered visitors."
               value={m || !isDemo ? (m ? topLevel : "-") : topLevel}
               sample={isDemo}
             />
@@ -635,7 +639,7 @@ export function TouristAnalytics({ range }: { range: DateRange }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
         <Reveal delay={80} className="h-full">
-          <SectionCard title="Nationality Distribution" className="h-full flex flex-col">
+          <SectionCard title="Nationality Distribution" insight="tourist.nationalities" className="h-full flex flex-col">
             {isEmptyChartData(nationalityData) ? (
               <ChartEmptyState className="h-[240px]" />
             ) : (
@@ -694,7 +698,7 @@ export function TouristAnalytics({ range }: { range: DateRange }) {
         </Reveal>
 
         <Reveal delay={120} className="h-full">
-          <SectionCard title="Dive Level Distribution" className="h-full flex flex-col">
+          <SectionCard title="Dive Level Distribution" insight="tourist.levels" className="h-full flex flex-col">
             {isEmptyChartData(levelData) ? (
               <ChartEmptyState className="h-[240px]" />
             ) : (
@@ -768,7 +772,7 @@ export function TouristAnalytics({ range }: { range: DateRange }) {
       </div>
 
       <Reveal delay={160}>
-        <SectionCard title="Registration Trends">
+        <SectionCard title="Registration Trends" insight="tourist.registrationTrends">
           {isEmptyChartData(monthlyData) ? (
             <ChartEmptyState className="h-[260px]" />
           ) : (

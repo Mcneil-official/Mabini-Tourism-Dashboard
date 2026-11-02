@@ -71,6 +71,11 @@ import { tourists, operatorApps, receipts } from "@/lib/mock-data";
 import { ForcedPasswordChange } from "@/components/auth/ForcedPasswordChange";
 import { Login } from "@/components/auth/Login";
 import { NotificationsBell } from "@/components/NotificationsBell";
+import {
+  PwaInstallButton,
+  PwaSidebarInstallCard,
+} from "@/components/pwa/PwaInstallButton";
+import { OfflineAlertBanner } from "@/components/pwa/OfflineAlertBanner";
 
 import { OverviewPage } from "@/components/sections/OverviewPage";
 import { TouristMgmtPage } from "@/components/sections/TouristMgmtPage";
@@ -364,6 +369,9 @@ function DashboardShell({
                 </div>
               );
             })}
+            <div className="p-3">
+              <PwaSidebarInstallCard />
+            </div>
           </div>
 
           {/* User footer */}
@@ -397,6 +405,7 @@ function DashboardShell({
 
         {/* Main Content */}
         <div className="flex-1 min-w-0 flex flex-col min-h-screen">
+          <OfflineAlertBanner />
           {/* Topbar */}
           <header className="h-16 sticky top-0 z-20 backdrop-blur bg-background/80 border-b border-border flex items-center gap-3 px-4 md:gap-4 md:px-6">
             <div>
@@ -488,6 +497,7 @@ function DashboardShell({
                   <span className="text-xs">⌘</span>K
                 </kbd>
               </button>
+              <PwaInstallButton />
               <Button
                 variant="outline"
                 size="icon"

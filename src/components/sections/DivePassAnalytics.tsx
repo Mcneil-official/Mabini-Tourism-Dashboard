@@ -212,6 +212,7 @@ export function DivePassAnalytics({ range }: { range: DateRange }) {
           <StatCard
             icon={CreditCard}
             label="Verified Revenue"
+            info="Total conservation and pass fees from verified payment receipts within the date window."
             value={
               isLive
                 ? isLiveData
@@ -231,6 +232,7 @@ export function DivePassAnalytics({ range }: { range: DateRange }) {
           <StatCard
             icon={TrendingUp}
             label="Credits Used"
+            info="Environmental pass credits burned on approved boat manifests during this period."
             value={isLive ? (isLiveData ? String(inUse) : "-") : "17"}
             delta={
               isLiveData && m?.creditsUsedPrev !== undefined
@@ -244,6 +246,7 @@ export function DivePassAnalytics({ range }: { range: DateRange }) {
           <StatCard
             icon={CreditCard}
             label="Avg Credit Utilization"
+            info="Ratio of burned credits to total credits purchased across all active operators."
             value={
               isLive
                 ? avgCreditsUsed != null
@@ -256,6 +259,7 @@ export function DivePassAnalytics({ range }: { range: DateRange }) {
           <StatCard
             icon={Clock}
             label="Pending Review Queue"
+            info="Sum of unverified payment receipts submitted by operators awaiting municipal treasury clearance."
             value={
               isLive
                 ? isLiveData
@@ -284,6 +288,7 @@ export function DivePassAnalytics({ range }: { range: DateRange }) {
           <SectionCard
             title="Pass Type Distribution"
             subtitle="Purchased volume and revenue contribution per tier."
+            insight="divePass.passTypeDistribution"
             sample={isDemo && !m?.passTypes?.length}
           >
             {isEmptyChartData(passTypeData) ? (
@@ -344,6 +349,7 @@ export function DivePassAnalytics({ range }: { range: DateRange }) {
           <SectionCard
             title="Credits Utilization"
             subtitle="Purchased volume vs redeemed credits per pass tier."
+            insight="divePass.creditsUtilization"
             sample={isDemo && !m?.passTypes?.length}
           >
             {isEmptyChartData(creditsData) ? (
@@ -392,6 +398,7 @@ export function DivePassAnalytics({ range }: { range: DateRange }) {
           <SectionCard
             title="Pass Purchases by Type"
             subtitle="Purchased pass volume across time buckets."
+            insight="divePass.inventoryPurchases"
             sample={isDemo && !m?.inventory?.length}
           >
             {isEmptyChartData(revenueByTypeData) ? (
@@ -450,6 +457,7 @@ export function DivePassAnalytics({ range }: { range: DateRange }) {
           <SectionCard
             title="Revenue vs Credit Burn Rate"
             subtitle="Verified receipts cash inflow vs inventory utilization rate."
+            insight="divePass.revenueVsBurn"
             sample={isDemo && !m?.dailyRevenue?.length}
           >
             {isEmptyChartData(revenueVsBurnData) ? (
