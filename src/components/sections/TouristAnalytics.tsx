@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Users, Globe, Award, TrendingUp } from "lucide-react";
+import { Users, Globe, Award, TrendingUp, Compass, CalendarClock, Bot, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -25,7 +25,7 @@ import {
 import { useLiveMode } from "@/lib/queries";
 import { InsightWidget } from "@/components/InsightWidget";
 import { buildTouristInsight } from "@/lib/insights";
-import { aggregateDaily, normalizeLevel, useMetrics } from "@/lib/metrics";
+import { aggregateDaily, normalizeLevel, useMetrics, useTouristPreferences, mockTouristPreferences } from "@/lib/metrics";
 import type { DateRange } from "@/lib/period";
 import {
   ResponsiveContainer,
@@ -38,6 +38,8 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  AreaChart,
+  Area,
 } from "recharts";
 
 const nationality = [
@@ -293,11 +295,20 @@ export function TouristAnalytics({ range }: { range: DateRange }) {
   const [natDrilldown, setNatDrilldown] = useState<string | null>(null);
   const [levelDrilldown, setLevelDrilldown] = useState<string | null>(null);
   const [marketFilter, setMarketFilter] = useState<MarketFilter>("all");
+  const [viewSection, setViewSection] = useState<"all" | "preferences" | "demographics">("all");
 
   const isLive = useLiveMode();
   const isDemo = !isLive;
   const metrics = useMetrics("tourist", range);
   const m = metrics.data;
+
+  const prefQuery = useTouristPreferences(range);
+  const prefs = prefQuery.data ?? mockTouristPreferences;
+  const plansDelta = prefs.totalPlans - prefs.totalPlansPrev;
+  const plansDeltaPct =
+    prefs.totalPlansPrev > 0
+      ? Math.round((plansDelta / prefs.totalPlansPrev) * 100)
+      : 0;
 
   const filteredNationalities = useMemo(
     () =>
@@ -572,72 +583,445 @@ export function TouristAnalytics({ range }: { range: DateRange }) {
     <AnalyticsState isLive={isLive} label="tourist" state={metrics}>
       <div className="space-y-6">
         <InsightWidget insight={touristInsight} label="Tourists" />
-      <Reveal>
-        <div className="flex items-center justify-between">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-1">
-            <StatCard
-              icon={Users}
-              label="Total Tourists"
-              info="Count of distinct registered tourist accounts created or active within the selected date range."
-              value={m || !isDemo ? (m ? total : "-") : total}
-              delta={m ? signed(totalDelta) : undefined}
-              deltaLabel="vs previous period"
-              up={totalDelta >= 0}
-              sample={isDemo}
-            />
-            <StatCard
-              icon={Globe}
-              label="Nationalities Represented"
-              info="Count of unique countries of origin declared across all registered visitors in this period."
-              value={m || !isDemo ? (m ? nationalities : "-") : nationalities}
-              delta={m?.newNationalities ? `+${m.newNationalities}` : undefined}
-              deltaLabel="first seen this period"
-              up
-              sample={isDemo}
-            />
-            <StatCard
-              icon={TrendingUp}
-              label="Avg Divers / Tourist"
-              info="Average number of active divers associated per tourist group or booking record."
-              value={m || !isDemo ? (m ? avgDivers : "-") : avgDivers}
-              sample={isDemo}
-            />
-            <StatCard
-              icon={Award}
-              label="Most Common Level"
-              info="The diver certification credential held by the highest percentage of registered visitors."
-              value={m || !isDemo ? (m ? topLevel : "-") : topLevel}
-              sample={isDemo}
-            />
-          </div>
-        </div>
-      </Reveal>
 
-      <Reveal>
-        <div className="flex items-center gap-1 bg-secondary/60 rounded-lg p-0.5 w-fit">
-          {(
-            [
-              ["all", "All Tourists"],
-              ["domestic", "Domestic (PH)"],
-              ["international", "International"],
-            ] as const
-          ).map(([key, label]) => (
+        {/* View switcher & Filters */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-1 bg-secondary/80 rounded-lg p-1 border border-border/50">
             <button
-              key={key}
-              onClick={() => setMarketFilter(key)}
+              onClick={() => setViewSection("all")}
               className={`px-3 py-1.5 text-xs rounded-md transition-all font-medium ${
-                marketFilter === key
-                  ? "bg-background shadow-sm text-foreground"
+                viewSection === "all"
+                  ? "bg-background shadow-sm text-foreground font-semibold"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              {label}
+              All Analytics
             </button>
-          ))}
-        </div>
-      </Reveal>
+            <button
+              onClick={() => setViewSection("preferences")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md transition-all font-medium ${
+                viewSection === "preferences"
+                  ? "bg-background shadow-sm text-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Bot className="size-3.5 text-primary" />
+              AI Trip Preferences
+              <Badge variant="secondary" className="text-[10px] py-0 px-1.5 h-4 ml-0.5 bg-primary/10 text-primary border-none">
+                Sinsay
+              </Badge>
+            </button>
+            <button
+              onClick={() => setViewSection("demographics")}
+              className={`px-3 py-1.5 text-xs rounded-md transition-all font-medium ${
+                viewSection === "demographics"
+                  ? "bg-background shadow-sm text-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Demographics & Levels
+            </button>
+          </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+          {viewSection !== "preferences" && (
+            <div className="flex items-center gap-1 bg-secondary/60 rounded-lg p-0.5 w-fit">
+              {(
+                [
+                  ["all", "All Tourists"],
+                  ["domestic", "Domestic (PH)"],
+                  ["international", "International"],
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setMarketFilter(key)}
+                  className={`px-3 py-1.5 text-xs rounded-md transition-all font-medium ${
+                    marketFilter === key
+                      ? "bg-background shadow-sm text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* SECTION 1: AI TRIP PREFERENCES (SINSAY PLANNER) */}
+        {(viewSection === "all" || viewSection === "preferences") && (
+          <div className="space-y-6">
+            {viewSection === "all" && (
+              <div className="flex items-center justify-between pt-1">
+                <div className="flex items-center gap-2">
+                  <Bot className="size-4 text-primary" />
+                  <h3 className="text-sm font-semibold tracking-tight text-foreground">
+                    AI Dive Trip Preferences
+                  </h3>
+                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4 text-primary border-primary/30">
+                    Sinsay Public App
+                  </Badge>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  Forward planning signals from tourists
+                </span>
+              </div>
+            )}
+
+            {/* Preference Executive KPI Strip */}
+            <Reveal>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard
+                  icon={Compass}
+                  label="Top Desired Activity"
+                  info="The most frequently selected underwater dive experience chosen by prospective visitors in the AI planner."
+                  value={prefs.topActivity}
+                  delta="Rank #1"
+                  deltaLabel="highest interest"
+                  up
+                  sample={isDemo}
+                />
+                <StatCard
+                  icon={CalendarClock}
+                  label="Avg Planned Stay"
+                  info="Average intended length of visit indicated by prospective divers using the Sinsay itinerary planner."
+                  value={`${prefs.avgStayDays} Days`}
+                  sample={isDemo}
+                />
+                <StatCard
+                  icon={Users}
+                  label="Avg Planned Group"
+                  info="Average party size declared during trip planning (solo, buddies, or dive groups)."
+                  value={`${prefs.avgGroupSize} Divers`}
+                  sample={isDemo}
+                />
+                <StatCard
+                  icon={Bot}
+                  label="AI Plans Analyzed"
+                  info="Total AI Dive Plans submitted by visitors via the Sinsay public app within the selected date window."
+                  value={prefs.totalPlans.toLocaleString()}
+                  delta={signed(plansDelta)}
+                  deltaLabel={`${signed(plansDeltaPct)}% vs prev period`}
+                  up={plansDelta >= 0}
+                  sample={isDemo}
+                />
+              </div>
+            </Reveal>
+
+            {/* Row 1: Activities & Length of Stay */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+              <Reveal delay={60} className="h-full">
+                <SectionCard
+                  title="Preferred Diving Activities"
+                  subtitle="Ranked demand for underwater experiences from AI Dive Planner"
+                  insight="tourist.preferredActivities"
+                  className="h-full flex flex-col"
+                >
+                  {isEmptyChartData(prefs.activities) ? (
+                    <ChartEmptyState className="h-[270px]" />
+                  ) : (
+                    <div className="h-[270px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={prefs.activities}
+                          layout="vertical"
+                          margin={{ top: 8, right: 30, left: 24, bottom: 0 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" opacity={0.4} />
+                          <XAxis type="number" {...chartAxisProps} />
+                          <YAxis
+                            dataKey="name"
+                            type="category"
+                            width={130}
+                            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                            axisLine={false}
+                            tickLine={false}
+                          />
+                          <Tooltip
+                            contentStyle={chartTooltipStyle}
+                            formatter={(val: any, _n: any, item: any) => [
+                              `${val} tourists (${item?.payload?.percentage ?? 0}%)`,
+                              "Demand",
+                            ]}
+                          />
+                          <Bar dataKey="count" radius={[0, 6, 6, 0]}>
+                            {prefs.activities.map((_, idx) => (
+                              <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </SectionCard>
+              </Reveal>
+
+              <Reveal delay={100} className="h-full">
+                <SectionCard
+                  title="Intended Length of Stay"
+                  subtitle="Duration distribution of prospective tourist visits"
+                  insight="tourist.lengthOfStay"
+                  className="h-full flex flex-col"
+                >
+                  {isEmptyChartData(prefs.stayDurations) ? (
+                    <ChartEmptyState className="h-[270px]" />
+                  ) : (
+                    <div className="h-[270px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={prefs.stayDurations}
+                          margin={{ top: 8, right: 16, left: -16, bottom: 0 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.4} />
+                          <XAxis
+                            dataKey="duration"
+                            {...chartAxisProps}
+                            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                          />
+                          <YAxis {...chartAxisProps} />
+                          <Tooltip
+                            contentStyle={chartTooltipStyle}
+                            formatter={(val: any, _n: any, item: any) => [
+                              `${val} tourists (${item?.payload?.percentage ?? 0}%)`,
+                              "Volume",
+                            ]}
+                          />
+                          <Bar dataKey="count" fill="var(--color-chart-2)" radius={[6, 6, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </SectionCard>
+              </Reveal>
+            </div>
+
+            {/* Row 2: Group Size & Composition + Budget Tier Distribution */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+              <Reveal delay={140} className="h-full">
+                <SectionCard
+                  title="Group Size & Composition"
+                  subtitle="Solo divers vs buddy pairs and dive groups"
+                  insight="tourist.groupComposition"
+                  className="h-full flex flex-col"
+                >
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-6 h-[250px]">
+                    <div className="w-[180px] h-[180px] shrink-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={prefs.groupSizes}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={50}
+                            outerRadius={80}
+                            paddingAngle={3}
+                            dataKey="count"
+                          >
+                            {prefs.groupSizes.map((_, index) => (
+                              <Cell key={`group-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={chartTooltipStyle}
+                            formatter={(val: any, _n: any, item: any) => [
+                              `${val} (${item?.payload?.percentage ?? 0}%)`,
+                              item?.payload?.name ?? "Count",
+                            ]}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="space-y-2 flex-1 w-full max-w-[220px]">
+                      {prefs.groupSizes.map((item, idx) => (
+                        <div key={item.name} className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2 truncate">
+                            <span
+                              className="size-2.5 rounded-full shrink-0"
+                              style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }}
+                            />
+                            <span className="text-muted-foreground truncate">{item.name}</span>
+                          </div>
+                          <span className="font-semibold">{item.percentage}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </SectionCard>
+              </Reveal>
+
+              <Reveal delay={180} className="h-full">
+                <SectionCard
+                  title="Budget Tier Distribution"
+                  subtitle="Target expenditure tier declared during planning"
+                  insight="tourist.budgetDistribution"
+                  className="h-full flex flex-col"
+                >
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-6 h-[250px]">
+                    <div className="w-[180px] h-[180px] shrink-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={prefs.budgetTiers}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={50}
+                            outerRadius={80}
+                            paddingAngle={3}
+                            dataKey="count"
+                          >
+                            {prefs.budgetTiers.map((_, index) => (
+                              <Cell
+                                key={`budget-${index}`}
+                                fill={CHART_COLORS[(index + 2) % CHART_COLORS.length]}
+                              />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={chartTooltipStyle}
+                            formatter={(val: any, _n: any, item: any) => [
+                              `${val} (${item?.payload?.percentage ?? 0}%)`,
+                              item?.payload?.tier ?? "Count",
+                            ]}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="space-y-2 flex-1 w-full max-w-[220px]">
+                      {prefs.budgetTiers.map((item, idx) => (
+                        <div key={item.tier} className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2 truncate">
+                            <span
+                              className="size-2.5 rounded-full shrink-0"
+                              style={{ backgroundColor: CHART_COLORS[(idx + 2) % CHART_COLORS.length] }}
+                            />
+                            <span className="text-muted-foreground truncate">{item.tier}</span>
+                          </div>
+                          <span className="font-semibold">{item.percentage}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </SectionCard>
+              </Reveal>
+            </div>
+
+            {/* Row 3: Forward Planning Demand Trend */}
+            <Reveal delay={220}>
+              <SectionCard
+                title="Forward Planning Demand Trend"
+                subtitle="Timeline of AI dive plan generation indicating forward tourist interest"
+                insight="tourist.planningDemand"
+              >
+                <div className="h-[250px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart
+                      data={prefs.demandTrends}
+                      margin={{ top: 8, right: 16, left: -16, bottom: 0 }}
+                    >
+                      <defs>
+                        <linearGradient id="prefDemandGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="var(--color-chart-1)" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="var(--color-chart-1)" stopOpacity={0.0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.4} />
+                      <XAxis dataKey="date" {...chartAxisProps} />
+                      <YAxis {...chartAxisProps} />
+                      <Tooltip
+                        contentStyle={chartTooltipStyle}
+                        formatter={(val: number) => [`${val} trip plans`, "AI Planner Requests"]}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="requests"
+                        stroke="var(--color-chart-1)"
+                        strokeWidth={2}
+                        fillOpacity={1}
+                        fill="url(#prefDemandGradient)"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </SectionCard>
+            </Reveal>
+
+            {/* RA 10173 Privacy Compliance Notice */}
+            <Reveal delay={240}>
+              <div className="flex items-start gap-3 p-3.5 rounded-lg border border-primary/20 bg-primary/5 text-xs text-muted-foreground leading-relaxed">
+                <ShieldCheck className="size-4 text-primary shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-semibold text-foreground">
+                    Republic Act No. 10173 (Data Privacy Act of 2012) Compliance:
+                  </span>{" "}
+                  Tourist preference insights are generated exclusively from anonymized, non-PII trip criteria submitted via the Sinsay Public AI Dive Planner with explicit consent. All data is aggregated strictly for municipal carrying capacity planning, dive site safety, and tourism resource allocation.
+                </div>
+              </div>
+            </Reveal>
+          </div>
+        )}
+
+        {/* SECTION 2: DEMOGRAPHICS & CERTIFICATIONS */}
+        {(viewSection === "all" || viewSection === "demographics") && (
+          <div className="space-y-6">
+            {viewSection === "all" && (
+              <div className="flex items-center justify-between pt-4 border-t border-border/40">
+                <div className="flex items-center gap-2">
+                  <Users className="size-4 text-primary" />
+                  <h3 className="text-sm font-semibold tracking-tight text-foreground">
+                    Tourist Demographics & Certification
+                  </h3>
+                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 h-4">
+                    Official Registrations
+                  </Badge>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  Verified municipal guest records & dive passes
+                </span>
+              </div>
+            )}
+
+            {/* Registration KPI Strip */}
+            <Reveal>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard
+                  icon={Users}
+                  label="Total Tourists"
+                  info="Count of distinct registered tourist accounts created or active within the selected date range."
+                  value={m || !isDemo ? (m ? total : "-") : total}
+                  delta={m ? signed(totalDelta) : undefined}
+                  deltaLabel="vs previous period"
+                  up={totalDelta >= 0}
+                  sample={isDemo}
+                />
+                <StatCard
+                  icon={Globe}
+                  label="Nationalities Represented"
+                  info="Count of unique countries of origin declared across all registered visitors in this period."
+                  value={m || !isDemo ? (m ? nationalities : "-") : nationalities}
+                  delta={m?.newNationalities ? `+${m.newNationalities}` : undefined}
+                  deltaLabel="first seen this period"
+                  up
+                  sample={isDemo}
+                />
+                <StatCard
+                  icon={TrendingUp}
+                  label="Avg Divers / Tourist"
+                  info="Average number of active divers associated per tourist group or booking record."
+                  value={m || !isDemo ? (m ? avgDivers : "-") : avgDivers}
+                  sample={isDemo}
+                />
+                <StatCard
+                  icon={Award}
+                  label="Most Common Level"
+                  info="The diver certification credential held by the highest percentage of registered visitors."
+                  value={m || !isDemo ? (m ? topLevel : "-") : topLevel}
+                  sample={isDemo}
+                />
+              </div>
+            </Reveal>
+
+            {/* Existing Demographics Charts and Table */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
         <Reveal delay={80} className="h-full">
           <SectionCard title="Nationality Distribution" insight="tourist.nationalities" className="h-full flex flex-col">
             {isEmptyChartData(nationalityData) ? (
@@ -854,8 +1238,10 @@ export function TouristAnalytics({ range }: { range: DateRange }) {
           </SectionCard>
         </Reveal>
       )}
+          </div>
+        )}
 
-      <DrilldownDialog
+            <DrilldownDialog
         open={!!natDrilldown}
         onOpenChange={() => setNatDrilldown(null)}
         title={`${natDrilldown ?? ""} - Tourist Breakdown`}

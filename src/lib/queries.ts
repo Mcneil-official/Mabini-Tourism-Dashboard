@@ -391,6 +391,10 @@ export interface LiveManifestRow {
   difficulty: string | null;
   boatName: string | null;
   maxDivers: number | null;
+  captainName?: string | null;
+  boatContact?: string | null;
+  crewCount?: number | null;
+  instructorName?: string | null;
 }
 
 export interface LiveDiverRow {
@@ -454,7 +458,6 @@ async function fetchManifests(): Promise<LiveManifestRow[]> {
       "Unknown operator",
     site: m.location,
     divers: diversByManifest.get(m.id) || 0,
-    // dive_manifests carries no dive-date column — created day is the date.
     date: dayOf(m.created_at),
     verified: m.verified === true,
     diveType: m.dive_type ?? null,
@@ -462,6 +465,10 @@ async function fetchManifests(): Promise<LiveManifestRow[]> {
     difficulty: m.difficulty ?? null,
     boatName: m.boat_name ?? null,
     maxDivers: m.max_divers ?? null,
+    captainName: m.captain_name ?? null,
+    boatContact: m.boat_contact ?? null,
+    crewCount: m.crew_count ?? null,
+    instructorName: m.instructor_name ?? null,
   }));
 }
 
@@ -487,7 +494,14 @@ export async function setManifestVerified(
       verified_at: verified ? new Date().toISOString() : null,
     })
     .eq("id", dbId);
-  if (error) throw error;
+  if (error) {
+    if (error.message?.includes("eco_dive_ids") && error.message?.includes("updated_at")) {
+      throw new Error(
+        "Database requires migration 050_eco_dive_ids_updated_at.sql in Supabase SQL Editor: 'ALTER TABLE public.eco_dive_ids ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();'"
+      );
+    }
+    throw error;
+  }
 }
 
 /** Diver roster for one manifest (lightbox detail). */

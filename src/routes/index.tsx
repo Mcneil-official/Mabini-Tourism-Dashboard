@@ -108,14 +108,8 @@ const searchSchema = z.object({
   site: z.string().default("All"),
   difficulty: z.string().default("All"),
   siteType: z.string().default("All"),
-  dateFrom: z
-    .string()
-    .default("")
-    .transform((v) => clampDateToToday(v)),
-  dateTo: z
-    .string()
-    .default("")
-    .transform((v) => clampDateToToday(v)),
+  dateFrom: z.string().default(""),
+  dateTo: z.string().default(""),
   tab: z.string().default(""),
   globalDateRange: z.enum(["today", "7d", "30d", "custom"]).default("30d"),
   globalDateFrom: z

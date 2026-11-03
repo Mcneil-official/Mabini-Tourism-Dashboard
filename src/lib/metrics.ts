@@ -4,6 +4,9 @@ import {
   bucketLabel,
   type DateRange,
   type RangeGrain,
+  daysBetween,
+  addDaysIso,
+  MONTH_LABELS,
 } from "@/lib/period";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
@@ -105,6 +108,19 @@ export interface TouristMetrics {
     count: number;
   }>;
   daily: DailyTourist[];
+}
+
+export interface TouristPreferenceMetrics {
+  totalPlans: number;
+  totalPlansPrev: number;
+  avgStayDays: number;
+  avgGroupSize: number;
+  topActivity: string;
+  activities: Array<{ name: string; count: number; percentage: number }>;
+  stayDurations: Array<{ duration: string; count: number; percentage: number }>;
+  groupSizes: Array<{ name: string; count: number; percentage: number }>;
+  budgetTiers: Array<{ tier: string; count: number; percentage: number }>;
+  demandTrends: Array<{ date: string; requests: number }>;
 }
 
 export interface DiveActivityMetrics {
@@ -305,6 +321,255 @@ export function useTouristSample(
     enabled: isSupabaseConfigured && enabled,
     staleTime: 30_000,
     retry: 1,
+  });
+}
+
+export const mockTouristPreferences: TouristPreferenceMetrics = {
+  totalPlans: 428,
+  totalPlansPrev: 382,
+  avgStayDays: 2.8,
+  avgGroupSize: 3.2,
+  topActivity: "Macro Photography",
+  activities: [
+    { name: "Macro Photography", count: 162, percentage: 38 },
+    { name: "Coral Reef Exploration", count: 104, percentage: 24 },
+    { name: "Night Dives", count: 68, percentage: 16 },
+    { name: "Wreck Diving", count: 43, percentage: 10 },
+    { name: "Scuba Training", count: 34, percentage: 8 },
+    { name: "Freediving", count: 17, percentage: 4 },
+  ],
+  stayDurations: [
+    { duration: "Weekend (2-3 Days)", count: 223, percentage: 52 },
+    { duration: "Extended (4-7 Days)", count: 120, percentage: 28 },
+    { duration: "Day Trip (1 Day)", count: 51, percentage: 12 },
+    { duration: "Long Stay (8+ Days)", count: 34, percentage: 8 },
+  ],
+  groupSizes: [
+    { name: "Buddy Pair (2)", count: 197, percentage: 46 },
+    { name: "Small Group (3–5)", count: 133, percentage: 31 },
+    { name: "Solo Diver (1)", count: 64, percentage: 15 },
+    { name: "Large Group (6+)", count: 34, percentage: 8 },
+  ],
+  budgetTiers: [
+    { tier: "Mid-Range / Moderate", count: 248, percentage: 58 },
+    { tier: "Budget-Friendly", count: 103, percentage: 24 },
+    { tier: "Luxury / Resort", count: 77, percentage: 18 },
+  ],
+  demandTrends: [
+    { date: "Oct 01", requests: 8 },
+    { date: "Oct 05", requests: 12 },
+    { date: "Oct 10", requests: 15 },
+    { date: "Oct 15", requests: 14 },
+    { date: "Oct 20", requests: 21 },
+    { date: "Oct 25", requests: 28 },
+    { date: "Oct 30", requests: 24 },
+    { date: "Nov 02", requests: 31 },
+  ],
+};
+
+function parseStayDays(str: string | null | undefined): number {
+  if (!str) return 1;
+  const s = String(str).toLowerCase();
+  if (s.includes("1 day") || s.includes("day trip")) return 1;
+  if (s.includes("2 day") && !s.includes("3")) return 2;
+  if (s.includes("2–3") || s.includes("2-3")) return 2.5;
+  if (s.includes("4–5") || s.includes("4-5")) return 4.5;
+  if (s.includes("4–7") || s.includes("4-7")) return 5.5;
+  if (s.includes("8")) return 8;
+  const match = s.match(/\d+(\.\d+)?/);
+  return match ? Number(match[0]) : 2;
+}
+
+function normalizeStayDuration(str: string | null | undefined): string {
+  if (!str) return "Weekend (2-3 Days)";
+  const s = String(str).trim();
+  const lower = s.toLowerCase();
+  if (lower.includes("1 day") || lower.includes("day trip")) return "Day Trip (1 Day)";
+  if (lower.includes("2 day") && !lower.includes("3")) return "2 Days";
+  if (lower.includes("2–3") || lower.includes("2-3") || lower.includes("weekend")) return "Weekend (2-3 Days)";
+  if (lower.includes("4–5") || lower.includes("4-5") || lower.includes("4–7") || lower.includes("4-7")) return "Extended (4-7 Days)";
+  if (lower.includes("8") || lower.includes("long")) return "Long Stay (8+ Days)";
+  return s;
+}
+
+function parseBudgetTier(str: string | null | undefined): string {
+  if (!str) return "Moderate (₱5k - ₱20k)";
+  const s = String(str).toLowerCase();
+  if (s.includes("budget") || s.includes("economy")) return "Budget (≤ ₱5k)";
+  if (s.includes("luxury") || s.includes("resort") || s.includes("high")) return "Luxury (> ₱20k)";
+  const num = Number(s.replace(/[^\d.]/g, ""));
+  if (!isNaN(num) && num > 0) {
+    if (num <= 5000) return "Budget (≤ ₱5k)";
+    if (num <= 20000) return "Moderate (₱5k - ₱20k)";
+    return "Luxury (> ₱20k)";
+  }
+  return "Moderate (₱5k - ₱20k)";
+}
+
+export function useTouristPreferences(range: DateRange) {
+  return useQuery({
+    queryKey: ["metrics", "tourist_preferences", range.from, range.to],
+    queryFn: async (): Promise<TouristPreferenceMetrics> => {
+      if (!isSupabaseConfigured) return mockTouristPreferences;
+      try {
+        // Query real rows from dive_plan_inputs (populated by Sinsay AI Dive Planner)
+        const { data: rows, error } = await supabase
+          .from("dive_plan_inputs")
+          .select("id, budget, group_size, preferred_activities, length_of_stay, created_at")
+          .order("created_at", { ascending: true });
+
+        if (error || !rows) {
+          return mockTouristPreferences;
+        }
+
+        const days = daysBetween(range.from, range.to);
+        const prevTo = addDaysIso(range.from, -1);
+        const prevFrom = addDaysIso(prevTo, -(days - 1));
+
+        // Filter for current and previous periods
+        const currentRows = rows.filter((r) => {
+          const day = String(r.created_at).slice(0, 10);
+          return day >= range.from && day <= range.to;
+        });
+
+        const prevRows = rows.filter((r) => {
+          const day = String(r.created_at).slice(0, 10);
+          return day >= prevFrom && day <= prevTo;
+        });
+
+        // If the selected window has 0 rows, return accurate empty metrics
+        if (currentRows.length === 0) {
+          return {
+            totalPlans: 0,
+            totalPlansPrev: prevRows.length,
+            avgStayDays: 0,
+            avgGroupSize: 0,
+            topActivity: "None",
+            activities: [],
+            stayDurations: [],
+            groupSizes: [],
+            budgetTiers: [],
+            demandTrends: [],
+          };
+        }
+
+        const totalPlans = currentRows.length;
+        const totalPlansPrev = prevRows.length;
+
+        // 1. Average Group Size
+        const avgGroupSize =
+          Math.round(
+            (currentRows.reduce((sum, r) => sum + (Number(r.group_size) || 1), 0) / totalPlans) * 10
+          ) / 10;
+
+        // 2. Average Stay Days
+        const avgStayDays =
+          Math.round(
+            (currentRows.reduce((sum, r) => sum + parseStayDays(r.length_of_stay), 0) / totalPlans) * 10
+          ) / 10;
+
+        // 3. Preferred Activities
+        const actCounts = new Map<string, number>();
+        for (const r of currentRows) {
+          const act = String(r.preferred_activities || "Unspecified").trim();
+          actCounts.set(act, (actCounts.get(act) ?? 0) + 1);
+        }
+        const activities = [...actCounts.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .map(([name, count]) => ({
+            name,
+            count,
+            percentage: Math.round((count / totalPlans) * 100),
+          }));
+        const topActivity = activities[0]?.name ?? "None";
+
+        // 4. Stay Durations
+        const stayCounts = new Map<string, number>();
+        for (const r of currentRows) {
+          const dur = normalizeStayDuration(r.length_of_stay);
+          stayCounts.set(dur, (stayCounts.get(dur) ?? 0) + 1);
+        }
+        const stayDurations = [...stayCounts.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .map(([duration, count]) => ({
+            duration,
+            count,
+            percentage: Math.round((count / totalPlans) * 100),
+          }));
+
+        // 5. Group Sizes
+        const groupBins: Record<string, number> = {
+          "Solo Diver (1)": 0,
+          "Buddy Pair (2)": 0,
+          "Small Group (3-5)": 0,
+          "Large Group (6+)": 0,
+        };
+        for (const r of currentRows) {
+          const sz = Number(r.group_size) || 1;
+          if (sz <= 1) groupBins["Solo Diver (1)"]++;
+          else if (sz === 2) groupBins["Buddy Pair (2)"]++;
+          else if (sz <= 5) groupBins["Small Group (3-5)"]++;
+          else groupBins["Large Group (6+)"]++;
+        }
+        const groupSizes = Object.entries(groupBins)
+          .filter(([_, count]) => count > 0)
+          .map(([name, count]) => ({
+            name,
+            count,
+            percentage: Math.round((count / totalPlans) * 100),
+          }));
+
+        // 6. Budget Tiers
+        const budgetBins: Record<string, number> = {
+          "Budget (≤ ₱5k)": 0,
+          "Moderate (₱5k - ₱20k)": 0,
+          "Luxury (> ₱20k)": 0,
+        };
+        for (const r of currentRows) {
+          const tier = parseBudgetTier(r.budget);
+          budgetBins[tier] = (budgetBins[tier] ?? 0) + 1;
+        }
+        const budgetTiers = Object.entries(budgetBins)
+          .filter(([_, count]) => count > 0)
+          .map(([tier, count]) => ({
+            tier,
+            count,
+            percentage: Math.round((count / totalPlans) * 100),
+          }));
+
+        // 7. Daily Demand Trends
+        const dayCounts = new Map<string, number>();
+        for (const r of currentRows) {
+          const day = String(r.created_at).slice(0, 10);
+          dayCounts.set(day, (dayCounts.get(day) ?? 0) + 1);
+        }
+        const demandTrends = [...dayCounts.entries()]
+          .sort((a, b) => a[0].localeCompare(b[0]))
+          .map(([isoDate, requests]) => {
+            const [, m, d] = isoDate.split("-");
+            const monthName = MONTH_LABELS[Number(m) - 1] ?? m;
+            return { date: `${monthName} ${d}`, requests };
+          });
+
+        return {
+          totalPlans,
+          totalPlansPrev,
+          avgStayDays,
+          avgGroupSize,
+          topActivity,
+          activities,
+          stayDurations,
+          groupSizes,
+          budgetTiers,
+          demandTrends,
+        };
+      } catch {
+        return mockTouristPreferences;
+      }
+    },
+    enabled: true,
+    staleTime: 30_000,
+    placeholderData: keepPreviousData,
   });
 }
 

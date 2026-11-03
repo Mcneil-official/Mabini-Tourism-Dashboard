@@ -268,6 +268,57 @@ export const CHART_INSIGHTS: Record<string, ChartInsight> = {
       "Surges coincide with holiday weekends, dive trade expos, and high-season commencement.",
     ],
   },
+
+  // ---------------------------------------------------------------------------
+  // AI TRIP PLANNER PREFERENCES (SINSAY INTEGRATION)
+  // ---------------------------------------------------------------------------
+  "tourist.preferredActivities": {
+    description:
+      "Ranks the most requested diving activities, marine encounters, and photo interests selected by tourists in the Sinsay AI Dive Plan Generator.",
+    insights: [
+      "Macro and muck photography dominates tourist intent, indicating high traffic demand for sensitive critters in Secret Bay and Basura.",
+      "Night diving requests pinpoint afternoon boat congestion and Coast Guard navigation check readiness.",
+      "Growing interest in coral exploration highlights the value of promoting shallow sanctuary house reefs like Cathedral and Twin Rocks.",
+    ],
+  },
+
+  "tourist.lengthOfStay": {
+    description:
+      "Distribution of intended travel durations in Mabini, categorized into day trips, weekend stays, multi-day getaways, and week-long expeditions.",
+    insights: [
+      "Weekend 2–3 day getaways form the core domestic volume from Metro Manila and CALABARZON.",
+      "Stays of 4–7 days correlate strongly with international underwater photographers booking dedicated multi-dive boat charters.",
+      "Helps resort operators anticipate mid-week bed occupancy versus weekend peak capacity.",
+    ],
+  },
+
+  "tourist.groupComposition": {
+    description:
+      "Breaks down intended travel party sizes between solo travelers, buddy pairs, small family/friend groups, and large dive clubs.",
+    insights: [
+      "Buddy pairs (2 divers) represent the largest single planning demographic across recreational and photography divers.",
+      "Small groups (3–5) and dive clubs (6+) indicate opportunities for packaged boat charters and pre-paid pass allocations.",
+      "Ensures municipal enforcement marshals verify minimum certified dive guide-to-guest ratios for larger groups.",
+    ],
+  },
+
+  "tourist.budgetDistribution": {
+    description:
+      "Categorizes tourist spending preferences across Budget-Friendly, Mid-Range / Moderate, and Luxury / Resort accommodation tiers.",
+    insights: [
+      "Mid-range preferences dominate, validating strong demand for boutique dive lodges and full-board resort meal packages.",
+      "The share of luxury/resort travelers signals potential for high-yield private boat charters and eco-tourism conservation fees.",
+    ],
+  },
+
+  "tourist.planningDemand": {
+    description:
+      "Timeline of AI dive trip planning requests generated on Sinsay, functioning as a 2–4 week leading indicator of inbound tourist arrivals.",
+    insights: [
+      "Planning spikes precede actual tourist arrival waves by approximately 14 to 28 days.",
+      "Allows the Municipal Tourism Office to pre-position staff, checkpoint marshals, and environmental fee pass inventories ahead of peak weekends.",
+    ],
+  },
 };
 
 /**
