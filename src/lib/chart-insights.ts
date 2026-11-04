@@ -319,6 +319,19 @@ export const CHART_INSIGHTS: Record<string, ChartInsight> = {
       "Allows the Municipal Tourism Office to pre-position staff, checkpoint marshals, and environmental fee pass inventories ahead of peak weekends.",
     ],
   },
+
+  // ---------------------------------------------------------------------------
+  // REPORTS
+  // ---------------------------------------------------------------------------
+  "reports.diveTypeDistribution": {
+    description:
+      "Aggregates total dive trips and diver passengers across all registered dive categories (Scuba, Fun Dive, Training, Intro Dive, Freediver) during the report window.",
+    insights: [
+      "Differentiates certified recreational fun divers from instructional courses and introductory diving for municipal capacity planning.",
+      "Monitors freediving adoption rates vs traditional scuba to allocate marine sanctuary zoning and surface buoy support.",
+      "Provides verified categorical breakdowns for official municipal reporting and environmental impact assessments.",
+    ],
+  },
 };
 
 /**

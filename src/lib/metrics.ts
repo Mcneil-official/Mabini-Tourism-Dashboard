@@ -222,8 +222,16 @@ export interface DailyReport {
   revenue: number;
 }
 
+export interface DiveTypeAggregate {
+  name: string;
+  count: number;
+  manifests: number;
+  value?: number;
+}
+
 export interface ReportMetrics {
   daily: DailyReport[];
+  diveTypes?: DiveTypeAggregate[];
 }
 
 export interface TouristSampleRow {
