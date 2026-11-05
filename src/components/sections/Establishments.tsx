@@ -1,3 +1,4 @@
+import { DocumentViewer } from "@/components/DocumentViewer";
 import { useState, useMemo, useEffect } from "react";
 import {
   Building2,
@@ -13,6 +14,12 @@ import {
   AlertTriangle,
   CheckCircle2,
   Download,
+  FileText,
+  FileCheck2,
+  Maximize2,
+  ZoomIn,
+  ExternalLink,
+  Check,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +49,11 @@ import {
 } from "@/components/shared";
 import { MABINI_BARANGAYS } from "@/lib/barangays";
 import {
+  MOCK_BUSINESS_PERMIT_URL,
+  MOCK_PCSSD_URL,
+  MOCK_DOT_URL,
+} from "@/lib/mock-docs";
+import {
   Table,
   TableBody,
   TableCell,
@@ -58,6 +70,7 @@ import {
   setEstablishmentSuspended,
   useInvalidateLive,
   dbErrorMessage,
+  isPdfUrl,
 } from "@/lib/queries";
 import { toast } from "sonner";
 import { downloadCsv } from "@/lib/export-utils";
@@ -84,6 +97,9 @@ type Establishment = {
   creditBalance: number;
   website: string;
   facebook: string;
+  business_permit_url?: string | null;
+  pcss_url?: string | null;
+  dot_accreditation_url?: string | null;
 };
 
 const ESTABLISHMENT_DATA: Establishment[] = [
@@ -112,6 +128,9 @@ const ESTABLISHMENT_DATA: Establishment[] = [
     creditBalance: 2850,
     website: "https://deepbluecharters.ph",
     facebook: "https://facebook.com/deepbluecharters",
+    business_permit_url: MOCK_BUSINESS_PERMIT_URL,
+    pcss_url: MOCK_PCSSD_URL,
+    dot_accreditation_url: MOCK_DOT_URL,
   },
   {
     id: "EST-002",
@@ -134,6 +153,9 @@ const ESTABLISHMENT_DATA: Establishment[] = [
     creditBalance: 1920,
     website: "https://reefriders.co",
     facebook: "https://facebook.com/reefridersco",
+    business_permit_url: MOCK_BUSINESS_PERMIT_URL,
+    pcss_url: MOCK_PCSSD_URL,
+    dot_accreditation_url: null,
   },
   {
     id: "EST-003",
@@ -178,6 +200,9 @@ const ESTABLISHMENT_DATA: Establishment[] = [
     creditBalance: 2240,
     website: "https://mantaexpeditions.ph",
     facebook: "https://facebook.com/mantaexpeditions",
+    business_permit_url: MOCK_BUSINESS_PERMIT_URL,
+    pcss_url: MOCK_PCSSD_URL,
+    dot_accreditation_url: MOCK_DOT_URL,
   },
   {
     id: "EST-005",
@@ -439,6 +464,9 @@ const toEstablishmentView = (e: any): Establishment => ({
   creditBalance: e.creditBalance ?? 0,
   website: e.website ?? "",
   facebook: e.facebook ?? "",
+  business_permit_url: e.business_permit_url ?? null,
+  pcss_url: e.pcss_url ?? null,
+  dot_accreditation_url: e.dot_accreditation_url ?? null,
   _dbId: e._dbId,
 });
 
@@ -448,6 +476,42 @@ export function Establishments() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [barangayFilter, setBarangayFilter] = useState("All");
   const [detail, setDetail] = useState<Establishment | null>(null);
+  const [selectedDocIdx, setSelectedDocIdx] = useState(0);
+  const [zoomedDocPhoto, setZoomedDocPhoto] = useState<string | null>(null);
+
+  const estDocs = detail
+    ? [
+        {
+          id: "permit",
+          title: "Business Permit",
+          shortTitle: "Business Permit",
+          type: "LGU Permit",
+          desc: "Municipal business permit issued by the Local Government of Mabini.",
+          url: detail.business_permit_url,
+          icon: FileText,
+        },
+        {
+          id: "pcssd",
+          title: "PCSSD Accreditation",
+          shortTitle: "PCSSD Accreditation",
+          type: "Scuba Diving Safety",
+          desc: "Philippine Commission on Sports Scuba Diving standard accredited certification.",
+          url: detail.pcss_url,
+          icon: ShieldCheck,
+        },
+        {
+          id: "dot",
+          title: "DOT Accreditation",
+          shortTitle: "DOT Accreditation",
+          type: "Tourism Standard",
+          desc: "Department of Tourism primary tourism enterprise accreditation.",
+          url: detail.dot_accreditation_url,
+          icon: Building2,
+        },
+      ]
+    : [];
+  const selectedDoc = estDocs[selectedDocIdx] || estDocs[0];
+  const uploadedDocCount = estDocs.filter((d) => Boolean(d.url)).length;
   const [suspendTarget, setSuspendTarget] = useState<Establishment | null>(
     null,
   );
@@ -813,8 +877,8 @@ export function Establishments() {
       </Reveal>
 
       {/* Detail Dialog */}
-      <Dialog open={!!detail} onOpenChange={() => setDetail(null)}>
-        <DialogContent className="max-w-lg">
+      <Dialog open={!!detail} onOpenChange={() => { setDetail(null); setSelectedDocIdx(0); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display">{detail?.name}</DialogTitle>
           </DialogHeader>
@@ -886,12 +950,117 @@ export function Establishments() {
                   }
                 />
               </div>
-              {(detail as any)._dbId && (
-                <p className="text-[11px] text-muted-foreground rounded-lg bg-secondary/40 border border-border/60 px-3 py-2">
-                  Permit, certification and rating data have no source table
-                  yet — those sections are intentionally blank, not loaded.
-                </p>
-              )}
+              {/* Verified Accreditations & Uploaded Photos */}
+              <div className="space-y-3 pt-2 border-t border-border/60">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="size-4 text-primary" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Accreditation & Permit Photos
+                    </span>
+                  </div>
+                  <Badge
+                    variant={uploadedDocCount > 0 ? "secondary" : "outline"}
+                    className="text-[11px]"
+                  >
+                    {uploadedDocCount} of {estDocs.length} on file
+                  </Badge>
+                </div>
+
+                {/* Document Selector Pills */}
+                <div className="grid grid-cols-3 gap-2">
+                  {estDocs.map((doc, idx) => {
+                    const isSelected = idx === selectedDocIdx;
+                    const hasFile = Boolean(doc.url);
+                    const Icon = doc.icon;
+                    return (
+                      <button
+                        key={doc.id}
+                        type="button"
+                        onClick={() => setSelectedDocIdx(idx)}
+                        className={`p-2.5 rounded-lg border text-left transition-all ${
+                          isSelected
+                            ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/40"
+                            : "border-border/70 hover:bg-muted/50 bg-card"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className="text-xs font-semibold text-foreground flex items-center gap-1.5 truncate">
+                            <Icon className="size-3.5 shrink-0 text-primary" />
+                            {doc.shortTitle}
+                          </span>
+                          {hasFile ? (
+                            <CheckCircle2 className="size-3.5 text-success shrink-0" />
+                          ) : (
+                            <AlertTriangle className="size-3.5 text-amber-500 shrink-0" />
+                          )}
+                        </div>
+                        <span className="text-[10px] text-muted-foreground block truncate">
+                          {hasFile ? "Photo Available" : "No Document"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Selected Photo Preview Box */}
+                {selectedDoc && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                          <selectedDoc.icon className="size-3.5 text-primary" />
+                          {selectedDoc.title}
+                        </h4>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          {selectedDoc.desc}
+                        </p>
+                      </div>
+
+                      {selectedDoc.url ? (
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/10"
+                            onClick={() => setZoomedDocPhoto(selectedDoc.url!)}
+                          >
+                            <Maximize2 className="size-3" />
+                            Enlarge Photo
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs gap-1"
+                            asChild
+                          >
+                            <a href={selectedDoc.url} target="_blank" rel="noreferrer">
+                              <ExternalLink className="size-3" />
+                              Open Original
+                            </a>
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                          <AlertTriangle className="size-3" />
+                          No Photo
+                        </span>
+                      )}
+                    </div>
+
+                    <DocumentViewer
+                      url={selectedDoc.url}
+                      title={selectedDoc.title}
+                      desc={selectedDoc.desc}
+                      bucket="operator_uploads"
+                      maxHeight="380px"
+                      onZoom={(resolved: string) => setZoomedDocPhoto(resolved)}
+                    />
+                  </div>
+                )}
+              </div>
               <div>
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
                   Assigned Dive Sites
@@ -1043,6 +1212,47 @@ export function Establishments() {
               Confirm Suspend
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Document Photo Zoom Lightbox */}
+      <Dialog
+        open={!!zoomedDocPhoto}
+        onOpenChange={(o) => !o && setZoomedDocPhoto(null)}
+      >
+        <DialogContent className="max-w-4xl p-2 bg-background/95 backdrop-blur-md">
+          <DialogHeader className="px-3 pt-2">
+            <DialogTitle className="text-sm font-semibold flex items-center gap-2">
+              <FileText className="size-4 text-primary" />
+              {detail?.name} — {selectedDoc?.title || "Accreditation Photo"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[80vh] overflow-auto p-2 flex items-center justify-center bg-black/5 dark:bg-black/50 rounded-lg">
+            {zoomedDocPhoto &&
+              (isPdfUrl(zoomedDocPhoto) ? (
+                <iframe
+                  src={`${zoomedDocPhoto}#toolbar=1`}
+                  title={selectedDoc?.title || "Accreditation Document"}
+                  className="w-full h-[75vh] rounded border-0"
+                />
+              ) : (
+                <img
+                  src={zoomedDocPhoto}
+                  alt="Accreditation Document Photo"
+                  className="max-h-[75vh] w-auto max-w-full object-contain rounded"
+                />
+              ))}
+          </div>
+          <div className="flex justify-end px-3 pb-2 pt-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setZoomedDocPhoto(null)}
+            >
+              Close Zoom
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -115,6 +115,7 @@ export interface TouristPreferenceMetrics {
   totalPlansPrev: number;
   avgStayDays: number;
   avgGroupSize: number;
+  avgBudget: number;
   topActivity: string;
   activities: Array<{ name: string; count: number; percentage: number }>;
   stayDurations: Array<{ duration: string; count: number; percentage: number }>;
@@ -332,25 +333,50 @@ export function useTouristSample(
   });
 }
 
+export const DIVE_PLAN_ACTIVITIES = [
+  "Fun / Reef Diving",
+  "Macro & Muck Photography",
+  "Introductory / Discover Scuba",
+  "Night Diving",
+  "Wreck & Deep Diving",
+  "Snorkeling & Freediving",
+  "Marine Life & Turtles",
+  "Coral Conservation / Eco-Dive",
+] as const;
+
+export const DIVE_PLAN_STAY_DURATIONS = [
+  "Day Trip (1 Day)",
+  "2 Days (Weekend)",
+  "3 Days (Long Weekend)",
+  "4–5 Days",
+  "1 Week (7 Days)",
+  "Extended Stay (8+ Days)",
+] as const;
+
 export const mockTouristPreferences: TouristPreferenceMetrics = {
   totalPlans: 428,
   totalPlansPrev: 382,
   avgStayDays: 2.8,
-  avgGroupSize: 3.2,
-  topActivity: "Macro Photography",
+  avgGroupSize: 2.6,
+  avgBudget: 8500,
+  topActivity: "Fun / Reef Diving",
   activities: [
-    { name: "Macro Photography", count: 162, percentage: 38 },
-    { name: "Coral Reef Exploration", count: 104, percentage: 24 },
-    { name: "Night Dives", count: 68, percentage: 16 },
-    { name: "Wreck Diving", count: 43, percentage: 10 },
-    { name: "Scuba Training", count: 34, percentage: 8 },
-    { name: "Freediving", count: 17, percentage: 4 },
+    { name: "Fun / Reef Diving", count: 125, percentage: 29 },
+    { name: "Macro & Muck Photography", count: 98, percentage: 23 },
+    { name: "Introductory / Discover Scuba", count: 64, percentage: 15 },
+    { name: "Night Diving", count: 42, percentage: 10 },
+    { name: "Wreck & Deep Diving", count: 35, percentage: 8 },
+    { name: "Marine Life & Turtles", count: 28, percentage: 7 },
+    { name: "Snorkeling & Freediving", count: 21, percentage: 5 },
+    { name: "Coral Conservation / Eco-Dive", count: 15, percentage: 3 },
   ],
   stayDurations: [
-    { duration: "Weekend (2-3 Days)", count: 223, percentage: 52 },
-    { duration: "Extended (4-7 Days)", count: 120, percentage: 28 },
-    { duration: "Day Trip (1 Day)", count: 51, percentage: 12 },
-    { duration: "Long Stay (8+ Days)", count: 34, percentage: 8 },
+    { duration: "2 Days (Weekend)", count: 172, percentage: 40 },
+    { duration: "3 Days (Long Weekend)", count: 110, percentage: 26 },
+    { duration: "Day Trip (1 Day)", count: 58, percentage: 14 },
+    { duration: "4–5 Days", count: 45, percentage: 10 },
+    { duration: "1 Week (7 Days)", count: 28, percentage: 7 },
+    { duration: "Extended Stay (8+ Days)", count: 15, percentage: 3 },
   ],
   groupSizes: [
     { name: "Buddy Pair (2)", count: 197, percentage: 46 },
@@ -359,9 +385,10 @@ export const mockTouristPreferences: TouristPreferenceMetrics = {
     { name: "Large Group (6+)", count: 34, percentage: 8 },
   ],
   budgetTiers: [
-    { tier: "Mid-Range / Moderate", count: 248, percentage: 58 },
-    { tier: "Budget-Friendly", count: 103, percentage: 24 },
-    { tier: "Luxury / Resort", count: 77, percentage: 18 },
+    { tier: "Moderate (₱5,000 - ₱10,000)", count: 215, percentage: 50 },
+    { tier: "Budget (< ₱5,000)", count: 105, percentage: 25 },
+    { tier: "Premium (₱10,000 - ₱20,000)", count: 72, percentage: 17 },
+    { tier: "Luxury (> ₱20,000)", count: 36, percentage: 8 },
   ],
   demandTrends: [
     { date: "Oct 01", requests: 8 },
@@ -375,43 +402,97 @@ export const mockTouristPreferences: TouristPreferenceMetrics = {
   ],
 };
 
-function parseStayDays(str: string | null | undefined): number {
-  if (!str) return 1;
+export function normalizeActivity(str: string | null | undefined): string {
+  if (!str) return "Fun / Reef Diving";
+  const s = String(str).trim();
+  const lower = s.toLowerCase();
+  if (lower.includes("macro") || lower.includes("muck") || lower.includes("photo")) {
+    return "Macro & Muck Photography";
+  }
+  if (
+    lower.includes("intro") ||
+    lower.includes("discover") ||
+    lower.includes("beginner") ||
+    lower.includes("training") ||
+    lower.includes("course") ||
+    lower.includes("scuba")
+  ) {
+    return "Introductory / Discover Scuba";
+  }
+  if (lower.includes("night")) return "Night Diving";
+  if (lower.includes("wreck") || lower.includes("deep")) return "Wreck & Deep Diving";
+  if (lower.includes("snorkel") || lower.includes("freediv")) return "Snorkeling & Freediving";
+  if (
+    lower.includes("turtle") ||
+    lower.includes("marine life") ||
+    lower.includes("pelagic") ||
+    lower.includes("shark")
+  ) {
+    return "Marine Life & Turtles";
+  }
+  if (lower.includes("coral") || lower.includes("conservation") || lower.includes("eco")) {
+    return "Coral Conservation / Eco-Dive";
+  }
+  if (lower.includes("fun") || lower.includes("reef")) return "Fun / Reef Diving";
+  return "Fun / Reef Diving";
+}
+
+export function parseStayDays(str: string | null | undefined): number {
+  if (!str) return 2;
   const s = String(str).toLowerCase();
-  if (s.includes("1 day") || s.includes("day trip")) return 1;
-  if (s.includes("2 day") && !s.includes("3")) return 2;
-  if (s.includes("2–3") || s.includes("2-3")) return 2.5;
+  if (s.includes("day trip") || s.includes("1 day")) return 1;
+  if (s.includes("2 day") || (s.includes("weekend") && !s.includes("long") && !s.includes("3"))) return 2;
+  if (s.includes("3 day") || s.includes("long weekend") || s.includes("2–3") || s.includes("2-3")) return 3;
   if (s.includes("4–5") || s.includes("4-5")) return 4.5;
-  if (s.includes("4–7") || s.includes("4-7")) return 5.5;
-  if (s.includes("8")) return 8;
+  if (s.includes("week") || s.includes("7 day") || s.includes("7")) return 7;
+  if (s.includes("extended") || s.includes("8")) return 8;
   const match = s.match(/\d+(\.\d+)?/);
   return match ? Number(match[0]) : 2;
 }
 
-function normalizeStayDuration(str: string | null | undefined): string {
-  if (!str) return "Weekend (2-3 Days)";
+export function normalizeStayDuration(str: string | null | undefined): string {
+  if (!str) return "2 Days (Weekend)";
   const s = String(str).trim();
   const lower = s.toLowerCase();
-  if (lower.includes("1 day") || lower.includes("day trip")) return "Day Trip (1 Day)";
-  if (lower.includes("2 day") && !lower.includes("3")) return "2 Days";
-  if (lower.includes("2–3") || lower.includes("2-3") || lower.includes("weekend")) return "Weekend (2-3 Days)";
-  if (lower.includes("4–5") || lower.includes("4-5") || lower.includes("4–7") || lower.includes("4-7")) return "Extended (4-7 Days)";
-  if (lower.includes("8") || lower.includes("long")) return "Long Stay (8+ Days)";
-  return s;
+  if (lower.includes("day trip") || lower.includes("1 day")) return "Day Trip (1 Day)";
+  if (lower.includes("2 day") || (lower.includes("weekend") && !lower.includes("long") && !lower.includes("3"))) {
+    return "2 Days (Weekend)";
+  }
+  if (lower.includes("3 day") || lower.includes("long weekend") || lower.includes("2–3") || lower.includes("2-3")) {
+    return "3 Days (Long Weekend)";
+  }
+  if (lower.includes("4–5") || lower.includes("4-5") || lower.includes("4") || lower.includes("5")) {
+    return "4–5 Days";
+  }
+  if (lower.includes("week") || lower.includes("7 day") || lower.includes("7")) {
+    return "1 Week (7 Days)";
+  }
+  if (lower.includes("extended") || lower.includes("8") || lower.includes("long stay")) {
+    return "Extended Stay (8+ Days)";
+  }
+  return "2 Days (Weekend)";
 }
 
-function parseBudgetTier(str: string | null | undefined): string {
-  if (!str) return "Moderate (₱5k - ₱20k)";
-  const s = String(str).toLowerCase();
-  if (s.includes("budget") || s.includes("economy")) return "Budget (≤ ₱5k)";
-  if (s.includes("luxury") || s.includes("resort") || s.includes("high")) return "Luxury (> ₱20k)";
-  const num = Number(s.replace(/[^\d.]/g, ""));
-  if (!isNaN(num) && num > 0) {
-    if (num <= 5000) return "Budget (≤ ₱5k)";
-    if (num <= 20000) return "Moderate (₱5k - ₱20k)";
-    return "Luxury (> ₱20k)";
+export function parseBudgetNumber(str: string | null | undefined): number | null {
+  if (!str) return null;
+  const cleaned = String(str).replace(/[^\d.]/g, "");
+  const num = parseFloat(cleaned);
+  return !isNaN(num) && num > 0 ? num : null;
+}
+
+export function parseBudgetTier(str: string | null | undefined): string {
+  const num = parseBudgetNumber(str);
+  if (num !== null) {
+    if (num < 5000) return "Budget (< ₱5,000)";
+    if (num <= 10000) return "Moderate (₱5,000 - ₱10,000)";
+    if (num <= 20000) return "Premium (₱10,000 - ₱20,000)";
+    return "Luxury (> ₱20,000)";
   }
-  return "Moderate (₱5k - ₱20k)";
+  const s = String(str || "").toLowerCase();
+  if (s.includes("budget") || s.includes("economy")) return "Budget (< ₱5,000)";
+  if (s.includes("luxury") || s.includes("resort") || s.includes("high")) return "Luxury (> ₱20,000)";
+  if (s.includes("premium")) return "Premium (₱10,000 - ₱20,000)";
+  return "Moderate (₱5,000 - ₱10,000)";
 }
 
 export function useTouristPreferences(range: DateRange) {
@@ -452,6 +533,7 @@ export function useTouristPreferences(range: DateRange) {
             totalPlansPrev: prevRows.length,
             avgStayDays: 0,
             avgGroupSize: 0,
+            avgBudget: 0,
             topActivity: "None",
             activities: [],
             stayDurations: [],
@@ -476,10 +558,19 @@ export function useTouristPreferences(range: DateRange) {
             (currentRows.reduce((sum, r) => sum + parseStayDays(r.length_of_stay), 0) / totalPlans) * 10
           ) / 10;
 
-        // 3. Preferred Activities
+        // 3. Average Planned Budget (PHP)
+        const validBudgets = currentRows
+          .map((r) => parseBudgetNumber(r.budget))
+          .filter((b): b is number => b !== null);
+        const avgBudget =
+          validBudgets.length > 0
+            ? Math.round(validBudgets.reduce((a, b) => a + b, 0) / validBudgets.length)
+            : 8500;
+
+        // 4. Preferred Activities (Canonical 8 Activities)
         const actCounts = new Map<string, number>();
         for (const r of currentRows) {
-          const act = String(r.preferred_activities || "Unspecified").trim();
+          const act = normalizeActivity(r.preferred_activities);
           actCounts.set(act, (actCounts.get(act) ?? 0) + 1);
         }
         const activities = [...actCounts.entries()]
@@ -491,7 +582,7 @@ export function useTouristPreferences(range: DateRange) {
           }));
         const topActivity = activities[0]?.name ?? "None";
 
-        // 4. Stay Durations
+        // 5. Stay Durations (Canonical 6 Tiers)
         const stayCounts = new Map<string, number>();
         for (const r of currentRows) {
           const dur = normalizeStayDuration(r.length_of_stay);
@@ -505,7 +596,7 @@ export function useTouristPreferences(range: DateRange) {
             percentage: Math.round((count / totalPlans) * 100),
           }));
 
-        // 5. Group Sizes
+        // 6. Group Sizes
         const groupBins: Record<string, number> = {
           "Solo Diver (1)": 0,
           "Buddy Pair (2)": 0,
@@ -527,11 +618,12 @@ export function useTouristPreferences(range: DateRange) {
             percentage: Math.round((count / totalPlans) * 100),
           }));
 
-        // 6. Budget Tiers
+        // 7. Budget Tiers
         const budgetBins: Record<string, number> = {
-          "Budget (≤ ₱5k)": 0,
-          "Moderate (₱5k - ₱20k)": 0,
-          "Luxury (> ₱20k)": 0,
+          "Budget (< ₱5,000)": 0,
+          "Moderate (₱5,000 - ₱10,000)": 0,
+          "Premium (₱10,000 - ₱20,000)": 0,
+          "Luxury (> ₱20,000)": 0,
         };
         for (const r of currentRows) {
           const tier = parseBudgetTier(r.budget);
@@ -545,7 +637,7 @@ export function useTouristPreferences(range: DateRange) {
             percentage: Math.round((count / totalPlans) * 100),
           }));
 
-        // 7. Daily Demand Trends
+        // 8. Daily Demand Trends
         const dayCounts = new Map<string, number>();
         for (const r of currentRows) {
           const day = String(r.created_at).slice(0, 10);
@@ -564,6 +656,7 @@ export function useTouristPreferences(range: DateRange) {
           totalPlansPrev,
           avgStayDays,
           avgGroupSize,
+          avgBudget,
           topActivity,
           activities,
           stayDurations,

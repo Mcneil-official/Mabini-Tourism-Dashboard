@@ -16,10 +16,10 @@ import {
 
 export function EstablishmentsPage() {
   const { search, setFilters } = useFilters();
-  const { canAdmin } = usePermission();
-  // RBAC: the accreditation approval queue (Operator Applications) is
-  // superadmin-only. TO Staff sees Registered Establishments only.
-  const canViewApplications = canAdmin;
+  const { canAct } = usePermission();
+  // RBAC: Operator Applications is accessible to TO Staff and Super Admin to verify
+  // permits, PCSSD accreditations, and DOT accreditations.
+  const canViewApplications = canAct;
   // The registry is the landing view; Operator Applications is entered from
   // the stat card / tab. Only these two values are top-level now that the
   // sub-tabs (Applications / Active Operators) live on the same row.

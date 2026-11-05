@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1050" width="800" height="1050">
+  <defs>
+    <linearGradient id="dotBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fafaf9"/>
+      <stop offset="100%" stop-color="#f5f5f4"/>
+    </linearGradient>
+    <linearGradient id="goldRibbon" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5"/>
+      <stop offset="50%" stop-color="#4338ca"/>
+      <stop offset="100%" stop-color="#3730a3"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="20" y="20" width="760" height="1010" rx="8" fill="url(#dotBg)" stroke="url(#goldRibbon)" stroke-width="8"/>
+  <rect x="36" y="36" width="728" height="978" rx="4" fill="none" stroke="#6366f1" stroke-width="2" stroke-dasharray="10 5"/>
+
+  <g text-anchor="middle" font-family="Georgia, serif">
+    <text x="400" y="90" font-size="13" fill="#64748b" letter-spacing="2">REPUBLIC OF THE PHILIPPINES</text>
+    <text x="400" y="115" font-size="18" font-weight="bold" fill="#312e81" letter-spacing="2">DEPARTMENT OF TOURISM</text>
+    <text x="400" y="138" font-size="13" fill="#4338ca" letter-spacing="1">REGIONAL OFFICE IV-A (CALABARZON)</text>
+
+    <!-- DOT Sun and Flag Symbol -->
+    <circle cx="400" cy="215" r="36" fill="#4338ca" opacity="0.1"/>
+    <circle cx="400" cy="215" r="32" fill="none" stroke="#4338ca" stroke-width="2"/>
+    <polygon points="400,195 405,208 418,208 408,216 412,228 400,220 388,228 392,216 382,208 395,208" fill="#eab308"/>
+    <text x="400" y="265" font-size="10" font-weight="bold" fill="#312e81" letter-spacing="1">PRIMARY TOURISM ENTERPRISE (PTE)</text>
+
+    <!-- Title -->
+    <text x="400" y="325" font-size="34" font-weight="bold" fill="#312e81" letter-spacing="3">ACCREDITATION CERTIFICATE</text>
+    <text x="400" y="352" font-size="14" font-weight="bold" fill="#4f46e5" letter-spacing="2">TOURISM RECREATIONAL FACILITY - DIVE RESORT</text>
+    <line x1="200" y1="368" x2="600" y2="368" stroke="#6366f1" stroke-width="2"/>
+  </g>
+
+  <!-- Details -->
+  <g font-family="Arial, sans-serif" fill="#1e293b">
+    <rect x="80" y="395" width="640" height="85" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="105" y="425" font-size="11" fill="#64748b" font-weight="bold">DOT ACCREDITATION NO.</text>
+    <text x="105" y="458" font-size="22" font-weight="bold" fill="#312e81" font-family="'Courier New', monospace">DOT-RO4A-2026-0091</text>
+
+    <text x="390" y="425" font-size="11" fill="#64748b" font-weight="bold">TIER RATING</text>
+    <text x="390" y="455" font-size="14" font-weight="bold" fill="#0f172a">Premium Dive Resort</text>
+
+    <text x="560" y="425" font-size="11" fill="#64748b" font-weight="bold">ACCREDITATION VALIDITY</text>
+    <text x="560" y="455" font-size="14" font-weight="bold" fill="#15803d">October 31, 2027</text>
+
+    <text x="80" y="520" font-size="13" fill="#475569">Be it known that the tourism establishment:</text>
+
+    <rect x="80" y="535" width="640" height="58" rx="4" fill="#eef2ff" stroke="#c7d2fe"/>
+    <text x="105" y="572" font-size="20" font-weight="bold" fill="#312e81">DEEP BLUE CHARTERS</text>
+
+    <text x="80" y="625" font-size="12" fill="#64748b">Registered Business Address:</text>
+    <text x="290" y="625" font-size="13" font-weight="bold" fill="#0f172a">San Teodoro, Mabini, Batangas</text>
+
+    <text x="80" y="655" font-size="12" fill="#64748b">Tourism Standards Inspection:</text>
+    <text x="290" y="655" font-size="13" font-weight="bold" fill="#15803d">100% COMPLIANT (National Tourism Standards)</text>
+
+    <text x="80" y="685" font-size="12" fill="#64748b">Environmental Sustainability:</text>
+    <text x="290" y="685" font-size="13" font-weight="bold" fill="#15803d">Eco-Certified Marine Conservation Participant</text>
+
+    <text x="80" y="715" font-size="12" fill="#64748b">Accreditation Code:</text>
+    <text x="290" y="715" font-size="13" font-weight="bold" fill="#0f172a">RA 9593 - The Tourism Act of 2009</text>
+
+    <rect x="80" y="745" width="640" height="65" rx="4" fill="#fdf4ff" stroke="#f0abfc"/>
+    <text x="95" y="770" font-size="10.5" fill="#701a75">ISSUED PURSUANT TO REPUBLIC ACT NO. 9593 AND REVISED RULES GOVERNING STANDARDS</text>
+    <text x="95" y="788" font-size="10.5" fill="#701a75">OF TOURISM ESTABLISHMENTS. ENTITLED TO ALL BENEFITS UNDER THE TOURISM PROMOTIONS ACT.</text>
+  </g>
+
+  <!-- Seal and Signatures -->
+  <g font-family="Arial, sans-serif">
+    <g transform="translate(180, 895) rotate(6)">
+      <circle cx="0" cy="0" r="48" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-dasharray="5 2.5"/>
+      <circle cx="0" cy="0" r="42" fill="none" stroke="#4f46e5" stroke-width="1.5"/>
+      <text x="0" y="-16" font-size="8" font-weight="bold" fill="#4f46e5" text-anchor="middle">DOT REGION IV-A</text>
+      <text x="0" y="3" font-size="12" font-weight="bold" fill="#4f46e5" text-anchor="middle">ACCREDITED</text>
+      <text x="0" y="18" font-size="8" font-weight="bold" fill="#4f46e5" text-anchor="middle">CALABARZON 2026</text>
+    </g>
+
+    <line x1="360" y1="925" x2="520" y2="925" stroke="#333" stroke-width="1.5"/>
+    <path d="M 370 920 Q 410 880 450 920 T 510 910" fill="none" stroke="#4338ca" stroke-width="2"/>
+    <text x="440" y="940" font-size="11" font-weight="bold" fill="#0f172a" text-anchor="middle">MARITESS S. CASTRO</text>
+    <text x="440" y="954" font-size="9" fill="#64748b" text-anchor="middle">Regional Director, DOT Region IV-A</text>
+
+    <line x1="560" y1="925" x2="710" y2="925" stroke="#333" stroke-width="1.5"/>
+    <path d="M 570 915 Q 610 880 650 915 T 700 910" fill="none" stroke="#312e81" stroke-width="2.5"/>
+    <text x="635" y="940" font-size="11" font-weight="bold" fill="#0f172a" text-anchor="middle">USEC. FERDINAND C. JUMAPAO</text>
+    <text x="635" y="954" font-size="9" fill="#64748b" text-anchor="middle">Undersecretary for Tourism Regulation</text>
+  </g>
+</svg>

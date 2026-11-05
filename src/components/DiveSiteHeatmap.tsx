@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.heat";
+import { MABINI_OCEAN_TERRITORIAL_LINE, MABINI_MUNICIPAL_WATERS_POLYGON } from "@/lib/mabini-territory";
 
 interface Site {
   id: string;
@@ -112,6 +113,8 @@ export function DiveSiteHeatmap({
   const tileRef = useRef<L.TileLayer | null>(null);
   const tintRef = useRef<HTMLDivElement | null>(null);
   const heatRef = useRef<L.Layer | null>(null);
+  const territoryRef = useRef<L.LayerGroup | null>(null);
+  const [showTerritory, setShowTerritory] = useState(true);
   const fittedKeyRef = useRef<string>("");
   const sitesRef = useRef<Site[]>(sites);
   sitesRef.current = sites;
@@ -221,6 +224,10 @@ export function DiveSiteHeatmap({
       tileRef.current = null;
       tintRef.current = null;
       heatRef.current = null;
+      if (territoryRef.current) {
+        map.removeLayer(territoryRef.current);
+        territoryRef.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

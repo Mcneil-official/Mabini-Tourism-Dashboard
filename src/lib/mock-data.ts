@@ -1,5 +1,11 @@
 import { MABINI_BARANGAYS } from "./barangays";
 import { DIVE_DIFFICULTIES, DIVING_TYPES } from "./diveTaxonomy";
+import {
+  MOCK_BUSINESS_PERMIT_URL,
+  MOCK_PCSSD_URL,
+  MOCK_DOT_URL,
+  MOCK_C_CARD_URL,
+} from "./mock-docs";
 
 export type AuditEntry = { date: string; t: string; who: string; action: string };
 
@@ -47,7 +53,34 @@ export const topSites = [
   { name: "Manta Reef", value: 197 },
   { name: "Turtle Bay", value: 168 },
 ];
-export const tourists = [
+export interface MockTourist {
+  id: string;
+  name: string;
+  nationality: string;
+  flag: string;
+  level: string;
+  status: string;
+  registered: string;
+  expires: string;
+  agency?: string | null;
+  license_number?: string | null;
+  credentials_url?: string | null;
+  affiliated_operator?: string | null;
+  pro_verified?: boolean;
+  dateAccredited?: string | null;
+  dive_pass_type?: "annual" | "one-day" | string | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
+  type_of_dive?: string | null;
+  diver_type?: string | null;
+  pcssd_number?: string | null;
+  pcssd_certificate_url?: string | null;
+  pto_number?: string | null;
+  pto_url?: string | null;
+  data_privacy_consent?: boolean;
+}
+
+export const tourists: Array<MockTourist> = [
   {
     id: "TR-10241",
     name: "Emma Larsen",
@@ -67,6 +100,21 @@ export const tourists = [
     status: "Active",
     registered: "2026-06-28",
     expires: "2027-06-28",
+      agency: "PADI",
+    license_number: "PADI-DM-418201",
+    credentials_url: MOCK_C_CARD_URL,
+    affiliated_operator: "Deep Blue Charters",
+    pro_verified: true,
+    dateAccredited: "2026-06-29",
+    emergency_contact_name: "Yumi Watanabe",
+    emergency_contact_phone: "+63 917 554 9921",
+    type_of_dive: "Certified",
+    diver_type: "Dive Master / Instructor",
+    pcssd_number: "PCSSD-2024-0318",
+    pcssd_certificate_url: MOCK_PCSSD_URL,
+    pto_number: "PTO-PG-2024-0129",
+    pto_url: MOCK_BUSINESS_PERMIT_URL,
+    data_privacy_consent: true,
   },
   {
     id: "TR-10243",
@@ -107,6 +155,21 @@ export const tourists = [
     status: "Active",
     registered: "2026-07-18",
     expires: "2028-07-18",
+    agency: null,
+    license_number: null,
+    credentials_url: null,
+    affiliated_operator: null,
+    pro_verified: false,
+    dateAccredited: null,
+    emergency_contact_name: "Camila Alvarez",
+    emergency_contact_phone: "+63 928 441 0293",
+    type_of_dive: "Certified",
+    diver_type: "Dive Master / Instructor",
+    pcssd_number: null,
+    pcssd_certificate_url: null,
+    pto_number: null,
+    pto_url: null,
+    data_privacy_consent: true,
   },
   {
     id: "TR-10247",
@@ -157,6 +220,21 @@ export const tourists = [
     status: "Active",
     registered: "2026-06-25",
     expires: "2028-06-25",
+      agency: "SSI",
+    license_number: "SSI-AOWI-88219",
+    credentials_url: MOCK_C_CARD_URL,
+    affiliated_operator: "Coral Coast Divers",
+    pro_verified: true,
+    dateAccredited: "2026-06-26",
+    emergency_contact_name: "Giulia Rossi",
+    emergency_contact_phone: "+63 919 778 3310",
+    type_of_dive: "Certified",
+    diver_type: "Dive Master / Instructor",
+    pcssd_number: "PCSSD-2024-0492",
+    pcssd_certificate_url: MOCK_PCSSD_URL,
+    pto_number: "PTO-PG-2024-0255",
+    pto_url: MOCK_BUSINESS_PERMIT_URL,
+    data_privacy_consent: true,
   },
   {
     id: "TR-10252",
@@ -177,6 +255,21 @@ export const tourists = [
     status: "Active",
     registered: "2026-06-30",
     expires: "2027-06-30",
+      agency: "NAUI",
+    license_number: "NAUI-DM-72104",
+    credentials_url: MOCK_C_CARD_URL,
+    affiliated_operator: "Bluefin Divers",
+    pro_verified: false,
+    dateAccredited: null,
+    emergency_contact_name: "Sofia Mendoza",
+    emergency_contact_phone: "+63 918 332 9918",
+    type_of_dive: "Certified",
+    diver_type: "Dive Master / Instructor",
+    pcssd_number: "PCSSD-2024-0581",
+    pcssd_certificate_url: MOCK_PCSSD_URL,
+    pto_number: "PTO-PG-2024-0341",
+    pto_url: MOCK_BUSINESS_PERMIT_URL,
+    data_privacy_consent: true,
   },
   {
     id: "TR-10254",
@@ -227,6 +320,21 @@ export const tourists = [
     status: "Active",
     registered: "2026-07-05",
     expires: "2028-07-05",
+      agency: "CMAS",
+    license_number: "CMAS-M2-60193",
+    credentials_url: MOCK_C_CARD_URL,
+    affiliated_operator: "Aqua Ventures PH",
+    pro_verified: true,
+    dateAccredited: "2026-07-06",
+    emergency_contact_name: "Lucas Santos",
+    emergency_contact_phone: "+63 920 119 4482",
+    type_of_dive: "Certified",
+    diver_type: "Dive Master / Instructor",
+    pcssd_number: "PCSSD-2024-0711",
+    pcssd_certificate_url: MOCK_PCSSD_URL,
+    pto_number: "PTO-PG-2024-0418",
+    pto_url: MOCK_BUSINESS_PERMIT_URL,
+    data_privacy_consent: true,
   },
   {
     id: "TR-10259",
@@ -277,6 +385,21 @@ export const tourists = [
     status: "Active",
     registered: "2026-06-14",
     expires: "2027-06-14",
+      agency: "SDI",
+    license_number: "SDI-DM-55412",
+    credentials_url: null,
+    affiliated_operator: "Deep Blue Charters",
+    pro_verified: false,
+    dateAccredited: null,
+    emergency_contact_name: "Sarah Richards",
+    emergency_contact_phone: "+63 917 220 1845",
+    type_of_dive: "Certified",
+    diver_type: "Dive Master / Instructor",
+    pcssd_number: "PCSSD-2024-0612",
+    pcssd_certificate_url: MOCK_PCSSD_URL,
+    pto_number: null,
+    pto_url: null,
+    data_privacy_consent: true,
   },
   {
     id: "TR-10264",
@@ -307,6 +430,21 @@ export const tourists = [
     status: "Active",
     registered: "2026-07-19",
     expires: "2028-07-19",
+      agency: "PADI",
+    license_number: "PADI-MSDT-21940",
+    credentials_url: MOCK_C_CARD_URL,
+    affiliated_operator: "Reef Riders Co.",
+    pro_verified: true,
+    dateAccredited: "2026-07-20",
+    emergency_contact_name: "Elena Petrova",
+    emergency_contact_phone: "+63 917 889 4431",
+    type_of_dive: "Certified",
+    diver_type: "Dive Master / Instructor",
+    pcssd_number: "PCSSD-2024-0820",
+    pcssd_certificate_url: MOCK_PCSSD_URL,
+    pto_number: "PTO-PG-2024-0512",
+    pto_url: MOCK_BUSINESS_PERMIT_URL,
+    data_privacy_consent: true,
   },
   {
     id: "TR-10267",
@@ -349,20 +487,35 @@ export const tourists = [
     expires: "2027-07-24",
   },
 ];
-export const operatorApps: Array<{
+export interface MockOperatorApp {
   id: string;
   name: string;
   owner: string;
   submitted: string;
   status: string;
   rejectReason?: string;
-}> = [
+  resort_location?: string | null;
+  role?: string | null;
+  contact_number?: string | null;
+  business_permit_url?: string | null;
+  pcss_url?: string | null;
+  dot_accreditation_url?: string | null;
+  website?: string | null;
+}
+
+export const operatorApps: Array<MockOperatorApp> = [
   {
     id: "OP-2201",
     name: "Deep Blue Charters",
     owner: "M. Kalua",
     submitted: "2026-07-18",
     status: "Pending",
+    resort_location: "San Teodoro, Mabini, Batangas",
+    contact_number: "+63 917 854 2301",
+    business_permit_url: MOCK_BUSINESS_PERMIT_URL,
+    pcss_url: MOCK_PCSSD_URL,
+    dot_accreditation_url: MOCK_DOT_URL,
+    website: "https://deepbluecharters.ph",
   },
   {
     id: "OP-2202",
@@ -370,6 +523,12 @@ export const operatorApps: Array<{
     owner: "S. Nakamura",
     submitted: "2026-07-10",
     status: "Pending",
+    resort_location: "Solo, Mabini, Batangas",
+    contact_number: "+63 918 223 4567",
+    business_permit_url: MOCK_BUSINESS_PERMIT_URL,
+    pcss_url: MOCK_PCSSD_URL,
+    dot_accreditation_url: null,
+    website: "https://reefriders.co",
   },
   {
     id: "OP-2203",

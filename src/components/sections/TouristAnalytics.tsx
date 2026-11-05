@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Users, Globe, Award, TrendingUp, Compass, CalendarClock, Bot, ShieldCheck } from "lucide-react";
+import { Users, Globe, Award, TrendingUp, Compass, CalendarClock, Bot, ShieldCheck, Banknote } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -670,7 +670,7 @@ export function TouristAnalytics({ range }: { range: DateRange }) {
 
             {/* Preference Executive KPI Strip */}
             <Reveal>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
                 <StatCard
                   icon={Compass}
                   label="Top Desired Activity"
@@ -696,6 +696,13 @@ export function TouristAnalytics({ range }: { range: DateRange }) {
                   sample={isDemo}
                 />
                 <StatCard
+                  icon={Banknote}
+                  label="Avg Planned Budget"
+                  info="Average trip budget declared by prospective visitors in the Sinsay AI itinerary planner."
+                  value={prefs.avgBudget ? `₱${prefs.avgBudget.toLocaleString()}` : "₱8,500"}
+                  sample={isDemo}
+                />
+                <StatCard
                   icon={Bot}
                   label="AI Plans Analyzed"
                   info="Total AI Dive Plans submitted by visitors via the Sinsay public app within the selected date window."
@@ -718,21 +725,21 @@ export function TouristAnalytics({ range }: { range: DateRange }) {
                   className="h-full flex flex-col"
                 >
                   {isEmptyChartData(prefs.activities) ? (
-                    <ChartEmptyState className="h-[270px]" />
+                    <ChartEmptyState className="h-[340px]" />
                   ) : (
-                    <div className="h-[270px] w-full">
+                    <div className="h-[340px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
                           data={prefs.activities}
                           layout="vertical"
-                          margin={{ top: 8, right: 30, left: 24, bottom: 0 }}
+                          margin={{ top: 8, right: 30, left: 16, bottom: 0 }}
                         >
                           <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" opacity={0.4} />
                           <XAxis type="number" {...chartAxisProps} />
                           <YAxis
                             dataKey="name"
                             type="category"
-                            width={130}
+                            width={180}
                             tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
                             axisLine={false}
                             tickLine={false}
@@ -764,19 +771,23 @@ export function TouristAnalytics({ range }: { range: DateRange }) {
                   className="h-full flex flex-col"
                 >
                   {isEmptyChartData(prefs.stayDurations) ? (
-                    <ChartEmptyState className="h-[270px]" />
+                    <ChartEmptyState className="h-[340px]" />
                   ) : (
-                    <div className="h-[270px] w-full">
+                    <div className="h-[340px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart
                           data={prefs.stayDurations}
-                          margin={{ top: 8, right: 16, left: -16, bottom: 0 }}
+                          margin={{ top: 8, right: 16, left: -16, bottom: 25 }}
                         >
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" opacity={0.4} />
                           <XAxis
                             dataKey="duration"
                             {...chartAxisProps}
-                            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                            interval={0}
+                            angle={-15}
+                            textAnchor="end"
+                            height={45}
+                            tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
                           />
                           <YAxis {...chartAxisProps} />
                           <Tooltip
