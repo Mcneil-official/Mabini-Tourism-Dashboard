@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 380" width="600" height="380">
+  <defs>
+    <linearGradient id="cardBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="50%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#090d16"/>
+    </linearGradient>
+    <linearGradient id="goldAccent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#eab308"/>
+      <stop offset="50%" stop-color="#facc15"/>
+      <stop offset="100%" stop-color="#ca8a04"/>
+    </linearGradient>
+    <filter id="cardShadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="3" dy="6" stdDeviation="6" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Card Body -->
+  <rect x="10" y="10" width="580" height="360" rx="16" fill="url(#cardBg)" stroke="#334155" stroke-width="2" filter="url(#cardShadow)"/>
+  
+  <!-- Holographic / Gold Top Banner -->
+  <path d="M 10 26 C 10 17.16 17.16 10 26 10 L 574 10 C 582.84 10 590 17.16 590 26 L 590 60 L 10 60 Z" fill="url(#goldAccent)"/>
+  
+  <text x="30" y="42" font-family="Arial, sans-serif" font-size="20" font-weight="900" fill="#0f172a" letter-spacing="2">PADI PROFESSIONAL</text>
+  <text x="560" y="40" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#0f172a" text-anchor="end">TEACHING STATUS • ACTIVE</text>
+
+  <!-- Diver Photo Box -->
+  <g transform="translate(35, 80)">
+    <rect x="0" y="0" width="120" height="150" rx="8" fill="#1e293b" stroke="#475569" stroke-width="2"/>
+    <!-- Silhouette Avatar -->
+    <circle cx="60" cy="55" r="28" fill="#64748b"/>
+    <path d="M 25 130 C 25 95 95 95 95 130 Z" fill="#64748b"/>
+    <!-- Photo Label -->
+    <rect x="10" y="125" width="100" height="20" rx="4" fill="#0284c7"/>
+    <text x="60" y="139" font-family="Arial, sans-serif" font-size="9" font-weight="bold" fill="#ffffff" text-anchor="middle" letter-spacing="1">VERIFIED PHOTO</text>
+  </g>
+
+  <!-- Diver Details -->
+  <g font-family="Arial, sans-serif" fill="#ffffff" transform="translate(180, 85)">
+    <text x="0" y="20" font-size="11" fill="#94a3b8" font-weight="bold" letter-spacing="1">PROFESSIONAL MEMBER NAME</text>
+    <text x="0" y="48" font-size="22" font-weight="bold" fill="#f8fafc">KENJI WATANABE</text>
+
+    <text x="0" y="85" font-size="11" fill="#94a3b8" font-weight="bold" letter-spacing="1">CERTIFICATION TIER</text>
+    <text x="0" y="110" font-size="16" font-weight="bold" fill="#38bdf8">DIVEMASTER / INSTRUCTOR</text>
+
+    <text x="0" y="145" font-size="10" fill="#94a3b8" font-weight="bold" letter-spacing="1">MEMBER / LICENSE NUMBER</text>
+    <text x="0" y="168" font-size="15" font-weight="bold" fill="#facc15" font-family="'Courier New', monospace">PADI-DM-418201</text>
+    
+    <text x="210" y="145" font-size="10" fill="#94a3b8" font-weight="bold" letter-spacing="1">CERTIFIED DATE</text>
+    <text x="210" y="168" font-size="14" font-weight="bold" fill="#f8fafc">28 JUN 2024</text>
+  </g>
+
+  <!-- Bottom Divider Line -->
+  <line x1="30" y1="265" x2="570" y2="265" stroke="#334155" stroke-width="1.5"/>
+
+  <!-- Card Footer Info -->
+  <g font-family="Arial, sans-serif" fill="#94a3b8" font-size="10">
+    <!-- QR Code / Chip Symbol -->
+    <rect x="35" y="285" width="60" height="60" rx="4" fill="#1e293b" stroke="#eab308" stroke-width="1.5"/>
+    <rect x="43" y="293" width="16" height="16" fill="#eab308"/>
+    <rect x="71" y="293" width="16" height="16" fill="#eab308"/>
+    <rect x="43" y="321" width="16" height="16" fill="#eab308"/>
+    <rect x="67" y="317" width="8" height="8" fill="#eab308"/>
+    <rect x="79" y="329" width="8" height="8" fill="#eab308"/>
+
+    <text x="115" y="300" font-weight="bold" fill="#f8fafc">MABINI ECO-DIVE CLEARANCE &amp; ACCREDITATION</text>
+    <text x="115" y="318">Authorized to lead guided boat dives and supervise open water scuba activities</text>
+    <text x="115" y="334">Affiliated Dive Center: <tspan fill="#38bdf8" font-weight="bold">Deep Blue Charters &amp; Resort, Anilao</tspan></text>
+    <text x="560" y="334" text-anchor="end" fill="#4ade80" font-weight="bold">STATUS: VALID 2026-2027</text>
+  </g>
+</svg>

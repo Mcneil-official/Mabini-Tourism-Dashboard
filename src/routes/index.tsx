@@ -36,6 +36,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   CommandDialog,
   CommandInput,
   CommandList,
@@ -263,6 +269,7 @@ function DashboardShell({
 }) {
   const { search, setFilters } = useFilters();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const liveSitesShell = useDiveSitesLive();
   const paletteSites = useMemo(
     () => (liveSitesShell.data ?? []).map(toSiteView),
@@ -387,7 +394,7 @@ function DashboardShell({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={onLogout}
+                onClick={() => setShowLogoutConfirm(true)}
                 className="size-7 text-muted-foreground hover:text-foreground"
                 title="Sign out"
               >
@@ -642,6 +649,47 @@ function DashboardShell({
           </CommandGroup>
         </CommandList>
       </CommandDialog>
+
+      {/* Logout Confirmation Dialog */}
+      <Dialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
+        <DialogContent className="sm:max-w-sm p-6 rounded-3xl border bg-card text-card-foreground shadow-2xl z-[70] [&>button.absolute]:hidden">
+          <div className="flex flex-col items-center text-center pt-2">
+            {/* Circular Icon Badge */}
+            <div className="size-16 rounded-full bg-rose-100 text-rose-500 dark:bg-rose-950/60 dark:text-rose-400 ring-8 ring-rose-500/10 flex items-center justify-center mb-4 transition-transform">
+              <LogOut className="size-7 stroke-[2.2]" />
+            </div>
+
+            <DialogTitle className="text-xl font-bold text-foreground mb-2">
+              Log out
+            </DialogTitle>
+
+            <DialogDescription className="text-sm text-muted-foreground leading-relaxed max-w-xs mb-6">
+              Are you sure you want to log out?
+            </DialogDescription>
+
+            <div className="flex items-center gap-3 w-full">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-secondary dark:hover:bg-secondary/80 border-0 text-foreground font-semibold transition-colors"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setShowLogoutConfirm(false);
+                  onLogout();
+                }}
+                className="flex-1 h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white font-semibold shadow-sm transition-colors"
+              >
+                Log out
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

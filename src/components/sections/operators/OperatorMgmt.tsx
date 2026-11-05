@@ -25,6 +25,15 @@ import {
   CheckCircle,
   XCircle,
   Ban,
+  ExternalLink,
+  FileText,
+  MapPin,
+  Phone,
+  Globe,
+  AlertTriangle,
+  Maximize2,
+  FileCheck2,
+  ZoomIn,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,6 +68,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { RejectReasonDialog } from "@/components/RejectReasonDialog";
+import { DocumentViewer } from "@/components/DocumentViewer";
 import {
   StatCard,
   SectionCard,
@@ -84,10 +94,12 @@ import {
   getTouristContact,
   type LiveAppRow,
   dbErrorMessage,
+  isPdfUrl,
 } from "@/lib/queries";
 import {
   operatorApps,
   ALL_OPERATOR_BIZ,
+  type MockOperatorApp,
   FORWARD_RECIPIENTS,
 } from "@/lib/mock-data";
 
@@ -119,6 +131,7 @@ export function OperatorMgmt({
   );
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [reviewApp, setReviewApp] = useState<(LiveAppRow | MockOperatorApp) | null>(null);
   const [rejectDialog, setRejectDialog] = useState<{
     ids: string[];
     single: string | null;
@@ -178,6 +191,9 @@ export function OperatorMgmt({
       contactNumber: row.contact_number,
       touristEmail: contact.email,
       website: row.website,
+      business_permit_url: row.business_permit_url,
+      pcss_url: row.pcss_url,
+      dot_accreditation_url: row.dot_accreditation_url,
     });
   };
 
@@ -563,6 +579,7 @@ export function OperatorMgmt({
                   <TableHead>Business Name</TableHead>
                   <TableHead>Owner</TableHead>
                   <TableHead>Submitted</TableHead>
+                  <TableHead>Credentials</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Decision</TableHead>
                 </TableRow>
@@ -625,9 +642,73 @@ export function OperatorMgmt({
                           {o.submitted}
                         </TableCell>
                         <TableCell>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span
+                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                                o.business_permit_url
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800"
+                                  : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800"
+                              }`}
+                              title={o.business_permit_url ? "Business Permit attached" : "Missing Business Permit"}
+                            >
+                              <FileText className="size-2.5" />
+                              Permit
+                              {o.business_permit_url ? (
+                                <Check className="size-2.5" />
+                              ) : (
+                                <span className="text-[9px] font-bold">!</span>
+                              )}
+                            </span>
+
+                            <span
+                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                                o.pcss_url
+                                  ? "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800"
+                                  : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800"
+                              }`}
+                              title={o.pcss_url ? "PCSSD Accreditation attached" : "Missing PCSSD Accreditation"}
+                            >
+                              <ShieldCheck className="size-2.5" />
+                              PCSSD
+                              {o.pcss_url ? (
+                                <Check className="size-2.5" />
+                              ) : (
+                                <span className="text-[9px] font-bold">!</span>
+                              )}
+                            </span>
+
+                            <span
+                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                                o.dot_accreditation_url
+                                  ? "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800"
+                                  : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800"
+                              }`}
+                              title={o.dot_accreditation_url ? "DOT Accreditation attached" : "Missing DOT Accreditation"}
+                            >
+                              <Building2 className="size-2.5" />
+                              DOT
+                              {o.dot_accreditation_url ? (
+                                <Check className="size-2.5" />
+                              ) : (
+                                <span className="text-[9px] font-bold">!</span>
+                              )}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
                           <StatusBadge status={o.status} />
                         </TableCell>
                         <TableCell className="text-right space-x-1.5">
+                          
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 text-xs font-medium gap-1 border-primary/30 text-primary hover:bg-primary/10"
+                                onClick={() => setReviewApp(o)}
+                              >
+                                <Eye className="size-3.5" />
+                                Review
+                              </Button>
                           {settled ? (
                             <div className="inline-flex items-center gap-2">
                               <span
@@ -819,6 +900,16 @@ export function OperatorMgmt({
         </>
       )}
 
+      
+      <ReviewApplicationDialog
+        app={reviewApp}
+        open={!!reviewApp}
+        onOpenChange={(o) => !o && setReviewApp(null)}
+        onApprove={(id) => decide(id, "Approved")}
+        onReject={(id) => setRejectDialog({ ids: [id], single: id })}
+        isBusy={!!reviewApp && !!busy[reviewApp.id]}
+      />
+
       <RejectReasonDialog
         open={!!rejectDialog}
         onOpenChange={(o) => !o && setRejectDialog(null)}
@@ -837,3 +928,354 @@ export function OperatorMgmt({
 }
 
 
+function ReviewApplicationDialog({
+  app,
+  open,
+  onOpenChange,
+  onApprove,
+  onReject,
+  isBusy,
+}: {
+  app: (LiveAppRow | MockOperatorApp) | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onApprove: (id: string) => void;
+  onReject: (id: string) => void;
+  isBusy: boolean;
+}) {
+  const [selectedDocIdx, setSelectedDocIdx] = useState(0);
+  const [zoomedPhoto, setZoomedPhoto] = useState<string | null>(null);
+
+  if (!app) return null;
+
+  const docs = [
+    {
+      id: "permit",
+      title: "Business Permit",
+      shortTitle: "Business Permit",
+      type: "LGU Permit",
+      desc: "Municipal business permit issued by the Local Government of Mabini.",
+      url: app.business_permit_url,
+      icon: FileText,
+    },
+    {
+      id: "pcssd",
+      title: "PCSSD Accreditation",
+      shortTitle: "PCSSD Accreditation",
+      type: "Scuba Diving Safety",
+      desc: "Philippine Commission on Sports Scuba Diving standard accredited certification.",
+      url: app.pcss_url,
+      icon: ShieldCheck,
+    },
+    {
+      id: "dot",
+      title: "DOT Accreditation",
+      shortTitle: "DOT Accreditation",
+      type: "Tourism Standard",
+      desc: "Department of Tourism primary tourism enterprise accreditation.",
+      url: app.dot_accreditation_url,
+      icon: Building2,
+    },
+  ];
+
+  const selectedDoc = docs[selectedDocIdx] || docs[0];
+  const allDocsPresent = Boolean(
+    app.business_permit_url && app.pcss_url && app.dot_accreditation_url
+  );
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between gap-3 pr-6">
+              <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                <Building2 className="size-5 text-primary" />
+                {app.name}
+              </DialogTitle>
+              <StatusBadge status={app.status} />
+            </div>
+            <DialogDescription className="text-xs text-muted-foreground flex items-center gap-3 mt-1">
+              <span>
+                Application ID:{" "}
+                <strong className="font-mono text-foreground">{app.id}</strong>
+              </span>
+              <span>•</span>
+              <span>
+                Submitted:{" "}
+                <strong className="text-foreground">{app.submitted}</strong>
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-1">
+            {/* Operator Details Overview */}
+            <div className="rounded-lg border bg-secondary/30 p-3 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+              <div>
+                <span className="text-muted-foreground block text-[11px]">
+                  Owner / Representative
+                </span>
+                <span className="font-semibold text-foreground mt-0.5 block">
+                  {app.owner}
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[11px]">
+                  Resort Location
+                </span>
+                <span className="font-medium text-foreground mt-0.5 flex items-center gap-1">
+                  <MapPin className="size-3 text-muted-foreground shrink-0" />
+                  {app.resort_location || "Mabini, Batangas"}
+                </span>
+              </div>
+              <div>
+                <span className="text-muted-foreground block text-[11px]">
+                  Contact Number
+                </span>
+                <span className="font-medium text-foreground mt-0.5 flex items-center gap-1">
+                  <Phone className="size-3 text-muted-foreground shrink-0" />
+                  {app.contact_number || "—"}
+                </span>
+              </div>
+              {app.website && (
+                <div className="col-span-2 sm:col-span-3">
+                  <span className="text-muted-foreground block text-[11px]">
+                    Website / Social Page
+                  </span>
+                  <a
+                    href={app.website}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary hover:underline font-medium inline-flex items-center gap-1 mt-0.5"
+                  >
+                    <Globe className="size-3" />
+                    {app.website}
+                    <ExternalLink className="size-2.5" />
+                  </a>
+                </div>
+              )}
+            </div>
+
+            {/* Document Selector Navigation */}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Select Document to Inspect Photo
+                </span>
+                <Badge
+                  variant={allDocsPresent ? "secondary" : "outline"}
+                  className="text-[11px]"
+                >
+                  {docs.filter((d) => !!d.url).length} of {docs.length} uploaded
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                {docs.map((doc, idx) => {
+                  const isSelected = idx === selectedDocIdx;
+                  const hasFile = Boolean(doc.url);
+                  const Icon = doc.icon;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setSelectedDocIdx(idx)}
+                      className={`p-2.5 rounded-lg border text-left transition-all ${
+                        isSelected
+                          ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/40"
+                          : "border-border/70 hover:bg-muted/50 bg-card"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <span className="text-xs font-semibold text-foreground flex items-center gap-1.5 truncate">
+                          <Icon className="size-3.5 shrink-0 text-primary" />
+                          {doc.shortTitle}
+                        </span>
+                        {hasFile ? (
+                          <CheckCircle2 className="size-3.5 text-success shrink-0" />
+                        ) : (
+                          <AlertTriangle className="size-3.5 text-amber-500 shrink-0" />
+                        )}
+                      </div>
+                      <span className="text-[10px] text-muted-foreground block truncate">
+                        {hasFile ? "Photo Uploaded" : "Missing File"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Uploaded Photo Preview Card */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <selectedDoc.icon className="size-4 text-primary" />
+                    {selectedDoc.title}
+                  </h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {selectedDoc.desc}
+                  </p>
+                </div>
+
+                {selectedDoc.url ? (
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/10"
+                      onClick={() => setZoomedPhoto(selectedDoc.url!)}
+                    >
+                      <Maximize2 className="size-3" />
+                      Enlarge Photo
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs gap-1"
+                      asChild
+                    >
+                      <a href={selectedDoc.url} target="_blank" rel="noreferrer">
+                        <ExternalLink className="size-3" />
+                        Open Original
+                      </a>
+                    </Button>
+                  </div>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                    <AlertTriangle className="size-3" />
+                    Missing Photo
+                  </span>
+                )}
+              </div>
+
+              <DocumentViewer
+                url={selectedDoc.url}
+                title={selectedDoc.title}
+                desc={selectedDoc.desc}
+                bucket="operator_uploads"
+                onZoom={(resolved) => setZoomedPhoto(resolved)}
+              />
+            </div>
+
+            {!allDocsPresent && (
+              <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-2.5 flex items-start gap-2.5 text-xs text-amber-800 dark:text-amber-200">
+                <AlertTriangle className="size-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-semibold block">Missing Credentials</span>
+                  <span>
+                    One or more regulatory documents are missing. Check each document tab before finalizing approval.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {app.status === "Rejected" && app.rejectReason && (
+              <div className="rounded-lg bg-destructive/10 border border-destructive/30 p-3 text-xs text-destructive">
+                <span className="font-semibold block">Rejection Reason:</span>
+                <p className="mt-0.5">{app.rejectReason}</p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex items-center justify-between sm:justify-between border-t pt-3">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+            >
+              Close
+            </Button>
+
+            {app.status === "Pending" ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isBusy}
+                  className="border-destructive/30 text-destructive hover:bg-destructive/10"
+                  onClick={() => {
+                    onOpenChange(false);
+                    onReject(app.id);
+                  }}
+                >
+                  <X className="size-3.5 mr-1" />
+                  Reject
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={isBusy}
+                  className="bg-success text-success-foreground hover:opacity-90 font-medium"
+                  onClick={() => {
+                    onOpenChange(false);
+                    onApprove(app.id);
+                  }}
+                >
+                  {isBusy ? (
+                    <Loader2 className="size-3.5 mr-1 animate-spin" />
+                  ) : (
+                    <Check className="size-3.5 mr-1" />
+                  )}
+                  Verify & Approve
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  Status: <strong className="text-foreground">{app.status}</strong>
+                </span>
+              </div>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Full-Screen Zoom Lightbox */}
+      <Dialog
+        open={!!zoomedPhoto}
+        onOpenChange={(o) => !o && setZoomedPhoto(null)}
+      >
+        <DialogContent className="max-w-4xl p-2 bg-background/95 backdrop-blur-md">
+          <DialogHeader className="px-3 pt-2">
+            <DialogTitle className="text-sm font-semibold flex items-center gap-2">
+              <FileText className="size-4 text-primary" />
+              {selectedDoc.title} — High Resolution Photo
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[80vh] overflow-auto p-2 flex items-center justify-center bg-black/5 dark:bg-black/50 rounded-lg">
+            {zoomedPhoto &&
+              (isPdfUrl(zoomedPhoto) ? (
+                <iframe
+                  src={`${zoomedPhoto}#toolbar=1`}
+                  title={selectedDoc.title}
+                  className="w-full h-[75vh] rounded border-0"
+                />
+              ) : (
+                <img
+                  src={zoomedPhoto}
+                  alt="Document Full Photo"
+                  className="max-h-[75vh] w-auto max-w-full object-contain rounded"
+                />
+              ))}
+          </div>
+          <div className="flex justify-end px-3 pb-2 pt-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setZoomedPhoto(null)}
+            >
+              Close Zoom
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}

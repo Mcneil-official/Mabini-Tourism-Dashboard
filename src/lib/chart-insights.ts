@@ -274,21 +274,21 @@ export const CHART_INSIGHTS: Record<string, ChartInsight> = {
   // ---------------------------------------------------------------------------
   "tourist.preferredActivities": {
     description:
-      "Ranks the most requested diving activities, marine encounters, and photo interests selected by tourists in the Sinsay AI Dive Plan Generator.",
+      "Ranks demand across the 8 canonical diving activities and marine interests configured in the Sinsay AI Dive Plan Generator.",
     insights: [
-      "Macro and muck photography dominates tourist intent, indicating high traffic demand for sensitive critters in Secret Bay and Basura.",
-      "Night diving requests pinpoint afternoon boat congestion and Coast Guard navigation check readiness.",
-      "Growing interest in coral exploration highlights the value of promoting shallow sanctuary house reefs like Cathedral and Twin Rocks.",
+      "Fun / Reef Diving and Macro & Muck Photography constitute the majority of prospective itinerary requests.",
+      "Growing interest in Introductory / Discover Scuba and Snorkeling & Freediving indicates strong entry-level domestic visitor traffic.",
+      "Dedicated niches like Wreck & Deep Diving, Night Diving, and Coral Conservation / Eco-Dives help operators forecast specialty equipment and guide requirements.",
     ],
   },
 
   "tourist.lengthOfStay": {
     description:
-      "Distribution of intended travel durations in Mabini, categorized into day trips, weekend stays, multi-day getaways, and week-long expeditions.",
+      "Distribution of intended travel durations in Mabini across the 6 standard stay categories (Day Trip up to Extended Stay 8+ Days).",
     insights: [
-      "Weekend 2–3 day getaways form the core domestic volume from Metro Manila and CALABARZON.",
-      "Stays of 4–7 days correlate strongly with international underwater photographers booking dedicated multi-dive boat charters.",
-      "Helps resort operators anticipate mid-week bed occupancy versus weekend peak capacity.",
+      "2 Days (Weekend) and 3 Days (Long Weekend) form the primary volume from Metro Manila and regional travelers.",
+      "Stays of 4–5 Days and 1 Week (7 Days) strongly correlate with underwater photography workshops and foreign dive travelers.",
+      "Helps accommodation and dive operators anticipate mid-week bed occupancy and multi-day boat charter allocations.",
     ],
   },
 
