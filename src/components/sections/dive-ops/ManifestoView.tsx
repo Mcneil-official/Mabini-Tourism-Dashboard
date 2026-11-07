@@ -24,9 +24,15 @@ import {
   Loader2,
   AlertCircle,
   Printer,
+  ExternalLink,
 } from "lucide-react";
 import { downloadCsv } from "@/lib/export-utils";
-import { openPrintDocument } from "@/lib/print-template";
+import {
+  FormalManifestoPrint,
+  type FormalDiver,
+  type FormalManifest,
+} from "./FormalManifestoPrint";
+import { MABINI_LGU_LOGO_URI } from "@/constants/lguLogo";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,6 +88,7 @@ import {
   setManifestVerified,
   fetchManifestDivers,
   dbErrorMessage,
+  type LiveDiverRow,
 } from "@/lib/queries";
 import {
   manifestos,
@@ -94,8 +101,23 @@ export function ManifestoView() {
   const { canAct, deny } = usePermission();
   const { search, setFilters, resetFilters } = useFilters();
   const { inRange } = useGlobalDateRange();
-  const [viewing, setViewing] = useState<any>(null);
-  const [roster, setRoster] = useState<any[] | null>(null);
+  const [viewing, setViewing] = useState<FormalManifest | null>(null);
+  const [roster, setRoster] = useState<LiveDiverRow[] | null>(null);
+
+  const modalDivers: FormalDiver[] | undefined = useMemo(() => {
+    if (roster && roster.length > 0) {
+      return roster.map((r) => ({
+        name: r.name,
+        ecoId: r.ecoId,
+        isWalkIn: r.isWalkIn,
+        nationality: "Philippines",
+        certification: r.isWalkIn ? "Walk-in Guest" : "Certified Diver",
+        municipalFeeStatus: "PAID & CLEARED",
+        safetyWaiverStatus: "SIGNED",
+      }));
+    }
+    return undefined;
+  }, [roster]);
   const [rosterLoading, setRosterLoading] = useState(false);
   const [rosterError, setRosterError] = useState(false);
   const [mockItems, setMockItems] = useState(manifestos);
@@ -132,7 +154,7 @@ export function ManifestoView() {
 
   // Live mode reads verification from the row (032 verified flag); mock
   // mode keeps the local Set with the first 15 pre-verified.
-  const isVerified = (m: any) =>
+  const isVerified = (m: { id: string; verified?: boolean }) =>
     isLiveData ? m.verified === true : verifiedIds.has(m.id);
 
   const toggleVerify = async (id: string) => {
@@ -244,7 +266,7 @@ export function ManifestoView() {
     else if (key === "verification") setVerificationFilter("all");
   };
 
-  const openViewing = (m: any) => {
+  const openViewing = (m: FormalManifest) => {
     setViewing(m);
     // Live mode: resolve the diver roster on demand from manifest_divers.
     // Mock rows carry no _dbId and keep the count-only view.
@@ -263,136 +285,49 @@ export function ManifestoView() {
     }
   };
 
-  const rowAction = async (m: any, kind: "download" | "forward") => {
+  const rowAction = async (m: FormalManifest, kind: "download" | "forward") => {
     if (kind === "forward") {
       setForwardDialog([m.id]);
       return;
     }
     setRowBusy((b) => ({ ...b, [m.id]: "download" }));
-    let diversList: { name: string; nationality?: string; level?: string }[] = [];
-
-    if (isLive && m?._dbId) {
-      try {
-        const fetched = await fetchManifestDivers(m._dbId);
-        diversList = (fetched || []).map((d: any) => ({
-          name: d.name ?? "Registered Diver",
-          nationality: d.nationality ?? "Philippines",
-          level: d.certificationLevel ?? "Open Water",
-        }));
-      } catch {
-        // fallback
-      }
-    }
-
-    if (diversList.length === 0) {
-      const count = m.divers || 1;
-      for (let i = 1; i <= count; i++) {
-        diversList.push({
-          name: `Diver Passenger #${i}`,
-          nationality: i % 2 === 0 ? "Philippines" : "International",
-          level: i === 1 ? "Divemaster" : "Open Water",
-        });
-      }
-    }
-
-    const rosterRowsHtml = diversList
-      .map(
-        (d, idx) => `
-      <tr>
-        <td class="text-center font-mono">${idx + 1}</td>
-        <td class="font-semibold">${d.name}</td>
-        <td>${d.nationality || "—"}</td>
-        <td>${d.level || "—"}</td>
-        <td class="text-center font-mono" style="color: #16a34a; font-weight: 600;">Fee Cleared</td>
-        <td class="text-center font-mono" style="color: #16a34a; font-weight: 600;">Waiver Signed</td>
-      </tr>`,
-      )
-      .join("");
-
-    const bodyHtml = `
-      <div style="margin-bottom: 20px; padding: 14px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;">
-          <div>
-            <div style="font-size: 8pt; text-transform: uppercase; color: #64748b; font-weight: 600;">Accredited Dive Operator</div>
-            <div style="font-size: 11pt; font-weight: 700; color: #0f172a;">${m.operator}</div>
-          </div>
-          <div>
-            <div style="font-size: 8pt; text-transform: uppercase; color: #64748b; font-weight: 600;">Scheduled Dive Location</div>
-            <div style="font-size: 11pt; font-weight: 700; color: #0284c7;">${m.site}</div>
-          </div>
-          <div>
-            <div style="font-size: 8pt; text-transform: uppercase; color: #64748b; font-weight: 600;">Date of Activity</div>
-            <div style="font-size: 11pt; font-weight: 700; color: #0f172a;">${m.date}</div>
-          </div>
-        </div>
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
-          <div>
-            <div style="font-size: 8pt; text-transform: uppercase; color: #64748b; font-weight: 600;">Total Divers Onboard</div>
-            <div style="font-size: 11pt; font-weight: 700; color: #0f172a;">${m.divers} Certified Divers</div>
-          </div>
-          <div>
-            <div style="font-size: 8pt; text-transform: uppercase; color: #64748b; font-weight: 600;">LGU Verification Clearance</div>
-            <div style="font-size: 11pt; font-weight: 700; color: ${m.verified ? "#16a34a" : "#d97706"};">
-              ${m.verified ? "VERIFIED & CLEARED" : "PENDING CLEARANCE"}
-            </div>
-          </div>
-          <div>
-            <div style="font-size: 8pt; text-transform: uppercase; color: #64748b; font-weight: 600;">Safety Briefing &amp; Equipment</div>
-            <div style="font-size: 11pt; font-weight: 700; color: #16a34a;">COMPLIANT</div>
-          </div>
-        </div>
-      </div>
-
-      <div style="margin-bottom: 8px; font-weight: 700; text-transform: uppercase; font-size: 10pt; color: #0f172a; letter-spacing: 0.02em;">
-        Official Divers &amp; Passenger Roster
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th style="width: 40px;" class="text-center">#</th>
-            <th>Diver Full Name</th>
-            <th>Nationality</th>
-            <th>Certification Level</th>
-            <th class="text-center">Municipal Fee</th>
-            <th class="text-center">Safety Waiver</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rosterRowsHtml}
-        </tbody>
-      </table>
-
-      <div style="margin-top: 24px; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 8.5pt; color: #475569; background: #f8fafc;">
-        <strong>Bantay Dagat &amp; Philippine Coast Guard Clearance Notice:</strong><br>
-        Vessels operating within Mabini Municipal Waters must retain a copy of this official manifest onboard during all dive voyages. Inspection officers may verify compliance against registered Municipal Dive Passes.
-      </div>
-    `;
-
-    openPrintDocument({
-      title: `Official Boat Dive Manifesto — ${m.id}`,
-      documentType: "Boat Activity & Diver Clearance Manifest",
-      documentNumber: m.id,
-      periodOrDate: m.date,
-      signatoryTitle: "Municipal Bantay Dagat / Tourism Officer",
-      bodyHtml,
-    });
-
+    const printUrl = `/dashboard/manifests/print/${encodeURIComponent(m.id)}`;
+    window.open(printUrl, "_blank");
     setRowBusy((b) => ({ ...b, [m.id]: null }));
     pushAuditLog(`Printed official boat dive manifesto ${m.id}`);
     toast.success("Manifesto Generated", {
-      description: `Official document opened for ${m.id} (${m.site}).`,
+      description: `Official printable manifesto opened for ${m.id} (${m.site}).`,
     });
   };
 
   const exportSelectedCsv = () => {
     const targetManifests = filtered.filter((m) => selected.has(m.id));
     if (targetManifests.length === 0) return;
-    const headers = ["Manifesto ID", "Operator", "Dive Site", "Divers Count", "Date", "Verified"];
-    const rows = targetManifests.map((m) => [m.id, m.operator, m.site, m.divers, m.date, (m as any).verified ? "Yes" : "No"]);
-    downloadCsv(`mabini-manifestos-export-${new Date().toISOString().slice(0, 10)}`, headers, rows);
+    const headers = [
+      "Manifesto ID",
+      "Operator",
+      "Dive Site",
+      "Divers Count",
+      "Date",
+      "Verified",
+    ];
+    const rows = targetManifests.map((m) => [
+      m.id,
+      m.operator,
+      m.site,
+      m.divers,
+      m.date,
+      isVerified(m) ? "Yes" : "No",
+    ]);
+    downloadCsv(
+      `mabini-manifestos-export-${new Date().toISOString().slice(0, 10)}`,
+      headers,
+      rows,
+    );
     pushAuditLog(`Exported ${targetManifests.length} manifestos as CSV`);
-    toast.success("CSV Downloaded", { description: `${targetManifests.length} manifestos exported.` });
+    toast.success("CSV Downloaded", {
+      description: `${targetManifests.length} manifestos exported.`,
+    });
   };
 
   const allSelected =
@@ -616,57 +551,11 @@ export function ManifestoView() {
                     selected.has(m.id) ? "ring-2 ring-primary/40" : ""
                   }`}
                 >
-                  <div
+                  <ManifestoMiniPreview
+                    manifest={m}
+                    isVerified={isVerified(m)}
                     onClick={() => openViewing(m)}
-                    className="block w-full aspect-[4/3] gradient-primary relative cursor-pointer"
-                  >
-                    <div
-                      className="absolute inset-0 opacity-30"
-                      style={{
-                        backgroundImage:
-                          "radial-gradient(circle at 30% 30%, oklch(1 0 0 / 0.6), transparent 50%)",
-                      }}
-                    />
-                    <div
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleSelect(m.id);
-                      }}
-                      className="absolute top-3 left-3 z-10 rounded-md bg-white/20 backdrop-blur p-0.5"
-                    >
-                      <Checkbox
-                        checked={selected.has(m.id)}
-                        onCheckedChange={() => {}}
-                        aria-label={`Select manifesto ${m.id}`}
-                      />
-                    </div>
-                    <div className="absolute bottom-3 left-3 text-primary-foreground">
-                      <div className="font-mono text-[10px] opacity-80">
-                        {m.id}
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setFilters({
-                            section: "dive-ops",
-                            tab: "sites",
-                            q: m.site,
-                          });
-                        }}
-                        className="font-display font-semibold text-left underline decoration-dotted underline-offset-2 hover:decoration-solid transition-colors"
-                      >
-                        {m.site}
-                      </button>
-                    </div>
-                    <div className="absolute top-3 right-3 rounded-full bg-white/20 backdrop-blur text-primary-foreground text-xs font-medium px-2.5 py-1">
-                      {m.divers} divers
-                    </div>
-                    {isVerified(m) && (
-                      <div className="absolute top-3 left-10 rounded-full bg-green-500/90 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 flex items-center gap-1">
-                        <ShieldCheck className="size-3" /> Verified
-                      </div>
-                    )}
-                  </div>
+                  />
                   <div className="p-3 space-y-2">
                     <button
                       onClick={(e) => {
@@ -753,157 +642,132 @@ export function ManifestoView() {
         className="mt-4"
       />
 
-      <AnimatePresence>
-        {viewing && (
-          <motion.div
-            key="manifesto-lightbox"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm overflow-y-auto"
-            onClick={() => setViewing(null)}
-            onKeyDown={(e) => e.key === "Escape" && setViewing(null)}
-            tabIndex={-1}
-            ref={(el) => {
-              if (el) {
-                el.focus();
-                el.addEventListener("keydown", (e) => {
-                  if (e.key === "Escape") setViewing(null);
-                });
-              }
-            }}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ duration: 0.25 }}
-              className="relative w-full max-w-3xl mx-4 my-8 rounded-2xl bg-card border border-border/60 shadow-2xl overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={() => setViewing(null)}
-                className="absolute top-4 right-4 z-10 rounded-full bg-background/80 backdrop-blur border border-border/60 p-2 text-muted-foreground hover:text-foreground hover:bg-background transition-colors"
-              >
-                <X className="size-5" />
-              </button>
+      <Dialog
+        open={!!viewing}
+        onOpenChange={(open) => !open && setViewing(null)}
+      >
+        <DialogContent className="w-[min(96vw,66rem)] max-w-5xl h-[min(94vh,58rem)] flex flex-col p-0 gap-0 overflow-hidden bg-background border-border shadow-2xl sm:rounded-2xl">
+          <DialogHeader className="px-5 sm:px-6 py-3.5 border-b border-border bg-card/60 shrink-0">
+            <div className="flex items-center justify-between pr-8">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                  <ScrollText className="size-4 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <DialogTitle className="font-display text-base font-bold flex items-center gap-2 truncate">
+                    <span>Passenger Manifest {viewing?.id}</span>
+                    {viewing && isVerified(viewing) ? (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 gap-1 font-semibold"
+                      >
+                        <ShieldCheck className="size-3" /> Verified
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 gap-1 font-semibold"
+                      >
+                        <Shield className="size-3" /> Unverified
+                      </Badge>
+                    )}
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-muted-foreground mt-0.5 truncate">
+                    {viewing?.operator} &bull; {viewing?.site} &bull;{" "}
+                    {viewing?.date}
+                  </DialogDescription>
+                </div>
+              </div>
+            </div>
+          </DialogHeader>
 
-              <div className="aspect-video w-full gradient-primary relative overflow-hidden">
-                <div
-                  className="absolute inset-0 opacity-25"
-                  style={{
-                    backgroundImage:
-                      "radial-gradient(circle at 30% 30%, oklch(1 0 0 / 0.6), transparent 50%)",
-                  }}
+          {/* Scrollable Document Canvas Container */}
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-muted/40 dark:bg-muted/10 p-3 sm:p-6 md:p-8 flex justify-center">
+            {viewing && (
+              <div className="w-full max-w-4xl bg-white shadow-xl rounded-xl overflow-hidden border border-slate-200 self-start">
+                <FormalManifestoPrint
+                  manifest={viewing}
+                  divers={modalDivers}
+                  inModal={true}
+                  showToolbar={false}
                 />
-                <div className="absolute bottom-6 left-6 text-primary-foreground">
-                  <div className="text-sm opacity-80">
-                    {viewing.date} · {viewing.operator}
-                  </div>
-                  <div className="text-3xl font-display font-bold">
-                    {viewing.site}
-                  </div>
-                  <div className="mt-2 text-sm">
-                    {viewing.divers} certified divers on the manifest
-                  </div>
-                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sticky Modal Action Footer */}
+          {viewing && (
+            <DialogFooter className="border-t border-border bg-card/60 px-4 sm:px-6 py-3 flex flex-row items-center justify-between gap-2 shrink-0 sm:justify-between">
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant={isVerified(viewing) ? "secondary" : "outline"}
+                  onClick={() => toggleVerify(viewing.id)}
+                  className="h-8 text-xs font-semibold"
+                >
+                  {isVerified(viewing) ? (
+                    <>
+                      <ShieldCheck className="size-3.5 mr-1.5 text-emerald-500" />
+                      <span>Verified</span>
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="size-3.5 mr-1" />
+                      <span>Mark as Verified</span>
+                    </>
+                  )}
+                </Button>
+                <span className="text-xs text-muted-foreground hidden sm:inline">
+                  {modalDivers
+                    ? `${modalDivers.length} Divers Listed`
+                    : `${viewing.divers || viewing.diver_count || 0} Divers Listed`}
+                </span>
               </div>
 
-              <div className="p-6 space-y-5">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <Field label="Manifesto" value={viewing.id} />
-                  <Field label="Operator" value={viewing.operator} />
-                  <Field label="Site" value={viewing.site} />
-                  <Field label="Date" value={viewing.date} />
-                  <Field label="Divers" value={`${viewing.divers} certified`} />
-                  {viewing.diveType && (
-                    <Field label="Dive Type" value={viewing.diveType} />
-                  )}
-                  {viewing.boatName && (
-                    <Field label="Boat" value={viewing.boatName} />
-                  )}
-                  {viewing.maxDivers != null && (
-                    <Field
-                      label="Capacity"
-                      value={`${viewing.divers}/${viewing.maxDivers}`}
-                    />
-                  )}
-                </div>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs font-semibold"
+                  onClick={() => {
+                    const id = viewing.id;
+                    setViewing(null);
+                    setForwardDialog([id]);
+                  }}
+                >
+                  <Forward className="size-3.5 mr-1" />
+                  <span className="hidden xs:inline">Forward</span>
+                </Button>
 
-                {viewing._dbId ? (
-                  <div className="space-y-2">
-                    <div className="text-sm font-semibold">
-                      Diver roster
-                      {roster ? ` (${roster.length})` : ""}
-                    </div>
-                    {rosterLoading ? (
-                      <div className="text-xs text-muted-foreground">
-                        Loading roster…
-                      </div>
-                    ) : rosterError ? (
-                      <div className="text-xs text-destructive">
-                        Could not load the roster. Close and reopen to retry.
-                      </div>
-                    ) : roster && roster.length > 0 ? (
-                      <ul className="max-h-48 overflow-y-auto divide-y divide-border/60 rounded-lg border border-border/60">
-                        {roster.map((d, i) => (
-                          <li
-                            key={i}
-                            className="flex items-center gap-2 px-3 py-2 text-sm"
-                          >
-                            <span className="font-medium flex-1 truncate">
-                              {d.name}
-                            </span>
-                            {d.ecoId && (
-                              <span className="text-xs text-muted-foreground font-mono">
-                                {d.ecoId}
-                              </span>
-                            )}
-                            {d.isWalkIn && (
-                              <Badge
-                                variant="secondary"
-                                className="text-[10px]"
-                              >
-                                Walk-in
-                              </Badge>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <div className="text-xs text-muted-foreground">
-                        No divers recorded on this manifesto.
-                      </div>
-                    )}
-                  </div>
-                ) : null}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs font-semibold"
+                  onClick={() => rowAction(viewing, "download")}
+                >
+                  <ExternalLink className="size-3.5 mr-1" />
+                  <span className="hidden sm:inline">Open in Tab</span>
+                </Button>
 
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => rowAction(viewing, "download")}
-                  >
-                    {rowBusy[viewing.id] === "download" ? (
-                      <Loader2 className="size-4 mr-1.5 animate-spin" />
-                    ) : (
-                      <Printer className="size-4 mr-1.5" />
-                    )}
-                    Print / PDF Manifest
-                  </Button>
-                  <Button
-                    className="flex-1 gradient-primary text-primary-foreground"
-                    onClick={() => rowAction(viewing, "forward")}
-                  >
-                    <Forward className="size-4 mr-1.5" /> Forward
-                  </Button>
-                </div>
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="h-8 text-xs font-semibold"
+                  onClick={() => {
+                    window.open(
+                      `/dashboard/manifests/print/${encodeURIComponent(viewing.id)}`,
+                      "_blank",
+                    );
+                  }}
+                >
+                  <Printer className="size-3.5 mr-1" />
+                  <span>Print / PDF</span>
+                </Button>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={!!forwardDialog}
@@ -1030,4 +894,181 @@ function ForwardForm({
   );
 }
 
+interface ManifestoMiniPreviewProps {
+  manifest: FormalManifest;
+  isVerified: boolean;
+  onClick: () => void;
+}
 
+function ManifestoMiniPreview({
+  manifest,
+  isVerified,
+  onClick,
+}: ManifestoMiniPreviewProps) {
+  const diverCount = manifest.divers ?? manifest.diver_count ?? 6;
+  const rawId = manifest.id || "0001";
+  const manifestNumber = rawId.startsWith("MF-")
+    ? rawId
+    : `2026-${rawId.length > 8 ? rawId.slice(0, 5).toUpperCase() : rawId.toUpperCase()}`;
+
+  const boatName =
+    manifest.boatName ||
+    manifest.boat_name ||
+    (manifest.operator ? `${manifest.operator} Vessel` : "Standard Vessel");
+
+  const siteName =
+    manifest.site || manifest.location || "Mabini Marine Sanctuary";
+  const rawDate = manifest.date || manifest.dive_date || "2026-07-22";
+
+  return (
+    <div
+      onClick={onClick}
+      className="relative w-full aspect-[4/3] bg-white text-slate-900 border-b border-border/50 select-none overflow-hidden cursor-pointer group flex flex-col justify-between"
+    >
+      {/* Document Sheet Interior */}
+      <div className="p-3 sm:p-3.5 pb-0 flex flex-col h-full justify-between z-0">
+        <div>
+          {/* Header: Mabini LGU Emblem + Republic Letterhead + Manifest No. */}
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2">
+              <img
+                src={MABINI_LGU_LOGO_URI}
+                alt="Mabini Emblem"
+                className="w-7 h-7 object-contain shrink-0 drop-shadow-sm"
+              />
+              <div className="leading-tight text-left">
+                <div className="text-[7px] font-bold text-slate-500 tracking-wider uppercase">
+                  Republic of the Philippines
+                </div>
+                <div className="text-[8.5px] font-extrabold text-[#0D3B66] uppercase tracking-tight">
+                  Municipality of Mabini
+                </div>
+              </div>
+            </div>
+
+            <div className="text-right shrink-0">
+              <span className="inline-block bg-[#0066CC]/10 text-[#0066CC] font-mono text-[8px] font-bold px-1.5 py-0.5 rounded border border-[#0066CC]/20">
+                {manifestNumber}
+              </span>
+              <div className="text-[7px] text-slate-400 mt-0.5">{rawDate}</div>
+            </div>
+          </div>
+
+          {/* Micro Vessel / Trip Metadata Box */}
+          <div className="border border-[#C5D9ED] rounded bg-[#F4F8FC] p-1.5 mb-2 grid grid-cols-2 gap-x-2 gap-y-0.5 text-[7.5px] text-[#0A2540]">
+            <div className="truncate">
+              <span className="text-slate-400 uppercase text-[6.5px] font-bold">
+                Vessel:{" "}
+              </span>
+              <span className="font-semibold">{boatName}</span>
+            </div>
+            <div className="truncate">
+              <span className="text-slate-400 uppercase text-[6.5px] font-bold">
+                Mode:{" "}
+              </span>
+              <span className="font-semibold">
+                {manifest.diveMode || manifest.dive_mode || "Boat Dive"}
+              </span>
+            </div>
+            <div className="truncate">
+              <span className="text-slate-400 uppercase text-[6.5px] font-bold">
+                Site:{" "}
+              </span>
+              <span className="font-semibold text-[#0066CC]">{siteName}</span>
+            </div>
+            <div className="truncate">
+              <span className="text-slate-400 uppercase text-[6.5px] font-bold">
+                Operator:{" "}
+              </span>
+              <span className="font-semibold">
+                {manifest.operator || "Accredited"}
+              </span>
+            </div>
+          </div>
+
+          {/* Micro Diver Roster Table */}
+          <div className="border border-[#C5D9ED] rounded overflow-hidden bg-white text-[7.5px]">
+            <div className="bg-[#D3E5F5] px-1.5 py-0.5 flex items-center justify-between font-bold text-[#0A2540] text-[6.5px] uppercase border-b border-[#C5D9ED]">
+              <span># Diver Passenger</span>
+              <span>ECO / ID</span>
+            </div>
+            <div className="divide-y divide-[#E2EEF8]">
+              <div className="px-1.5 py-0.5 flex items-center justify-between text-[#0A2540]">
+                <span className="font-medium truncate max-w-[110px]">
+                  1. Registered Diver
+                </span>
+                <span className="font-mono text-[#0066CC] font-bold text-[7px]">
+                  ECO-2026-1041
+                </span>
+              </div>
+              <div className="px-1.5 py-0.5 flex items-center justify-between text-[#0A2540]">
+                <span className="font-medium truncate max-w-[110px]">
+                  2. Registered Diver
+                </span>
+                <span className="font-mono text-[#0066CC] font-bold text-[7px]">
+                  ECO-2026-1042
+                </span>
+              </div>
+              {diverCount > 2 && (
+                <div className="px-1.5 py-0.5 text-[6.5px] text-center text-slate-500 bg-slate-50 font-medium">
+                  + {diverCount - 2} more registered divers cleared
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Flowing Ocean Wave Graphic at bottom */}
+        <div className="w-[calc(100%+2rem)] -mx-4 -mb-1 mt-1 overflow-hidden leading-none pointer-events-none shrink-0">
+          <svg
+            className="w-full h-8 sm:h-9 block"
+            viewBox="0 0 484 57"
+            preserveAspectRatio="none"
+          >
+            <path
+              d="M0 26.7778C80 4.61481 112 43.9037 190 30.8074C260 16.7037 286 2.6 332 8.64444C375 16.7037 383 -12.5111 441 6.62963C463 14.6889 475 19.7259 484 21.7407V57H0V26.7778Z"
+              fill="#EEF6FE"
+            />
+            <path
+              d="M0 4.65804C57 -4.40114 102 26.8027 160 22.7764C223 20.7633 247 1.63831 305 17.7435C368 34.8553 412 50.9605 484 15.7304V57H0V4.65804Z"
+              fill="#9CC8F1"
+            />
+            <path
+              d="M0 4C73 -4 132 35 209 37C298 44 355 48 414 29C445 20 463 9 484 0V57H0V4Z"
+              fill="#6CB0E7"
+            />
+            <path
+              d="M0 27.0129C79 3.02321 143 28.0125 215 41.0069C295 56.0004 380 57.9996 484 27.0129V57H0V27.0129Z"
+              fill="#13508B"
+            />
+            <path
+              d="M0 25C76 26.0667 112 61.2667 194 47.4C268 35.6667 326 20.7333 378 36.7333C421 50.6 452 42.0667 484 30.3333V57H0V25Z"
+              fill="#1970B9"
+              opacity="0.85"
+            />
+          </svg>
+        </div>
+      </div>
+
+      {/* Floating UI Elements & Overlay */}
+      {/* Diver count tag */}
+      <div className="absolute top-2.5 right-2.5 z-10 rounded-full bg-slate-900/80 text-white backdrop-blur text-[10px] font-medium px-2 py-0.5 shadow-sm">
+        {diverCount} divers
+      </div>
+
+      {/* Verified Badge */}
+      {isVerified && (
+        <div className="absolute top-2.5 left-2.5 z-10 rounded-full bg-emerald-600 text-white text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 flex items-center gap-1 shadow-sm">
+          <ShieldCheck className="size-2.5" /> Verified
+        </div>
+      )}
+
+      {/* Hover action overlay */}
+      <div className="absolute inset-0 z-20 bg-slate-900/20 backdrop-blur-[1px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+        <span className="px-3 py-1.5 rounded-full bg-white/95 text-slate-900 text-xs font-semibold shadow-lg flex items-center gap-1.5 backdrop-blur transform -translate-y-1 group-hover:translate-y-0 transition-transform">
+          <Eye className="size-3.5 text-[#0066CC]" /> View Manifesto
+        </span>
+      </div>
+    </div>
+  );
+}
