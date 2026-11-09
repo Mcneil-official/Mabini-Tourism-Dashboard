@@ -223,6 +223,9 @@ export interface LiveReceiptRow {
   rejectReason?: string;
   receiptPath: string | null;
   passLabel: string;
+  passCount: number;
+  remainingPasses?: number;
+  passType?: string;
 }
 
 async function fetchReceipts(): Promise<LiveReceiptRow[]> {
@@ -239,7 +242,7 @@ async function fetchReceipts(): Promise<LiveReceiptRow[]> {
   if (invIds.length > 0) {
     const { data: inv, error: iErr } = await supabase
       .from("dive_pass_inventory")
-      .select("id, pass_label")
+      .select("id, pass_label, pass_type, total_passes, remaining_passes, amount")
       .in("id", invIds);
     if (iErr) throw iErr;
     invById = new Map((inv || []).map((r: any) => [r.id, r]));
@@ -257,19 +260,29 @@ async function fetchReceipts(): Promise<LiveReceiptRow[]> {
     verified: "Approved",
     rejected: "Rejected",
   };
-  return (txs || []).map((t: any) => ({
-    _dbId: t.id,
-    id: shortId(t.id),
-    operator: nameById.get(t.operator_id) || "Unknown operator",
-    ref: t.reference_number,
-    amount: `₱${Number(t.amount).toLocaleString()}`,
-    amountNum: Number(t.amount),
-    date: dayOf(t.created_at),
-    status: statusMap[t.status] || "Pending",
-    rejectReason: t.rejection_reason || undefined,
-    receiptPath: t.receipt_url ?? null,
-    passLabel: invById.get(t.dive_pass_inventory_id)?.pass_label || "Dive Pass",
-  }));
+  return (txs || []).map((t: any) => {
+    const inv = invById.get(t.dive_pass_inventory_id);
+    const passCount = Number(inv?.total_passes ?? t.quantity) || 1;
+    const passLabel =
+      inv?.pass_label ||
+      (passCount > 1 ? `${passCount}-Dive Package` : "Standard Dive Pass");
+    return {
+      _dbId: t.id,
+      id: shortId(t.id),
+      operator: nameById.get(t.operator_id) || "Unknown operator",
+      ref: t.reference_number || t.ref_number || "—",
+      amount: `₱${Number(t.amount).toLocaleString()}`,
+      amountNum: Number(t.amount) || 0,
+      date: dayOf(t.created_at),
+      status: statusMap[t.status] || "Pending",
+      rejectReason: t.rejection_reason || undefined,
+      receiptPath: t.receipt_url ?? null,
+      passLabel,
+      passCount,
+      remainingPasses: typeof inv?.remaining_passes === "number" ? inv.remaining_passes : undefined,
+      passType: inv?.pass_type,
+    };
+  });
 }
 
 export async function decideReceipt(

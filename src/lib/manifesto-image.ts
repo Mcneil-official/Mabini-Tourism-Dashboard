@@ -1,12 +1,16 @@
 /**
  * Sinsay Official Manifesto Image Generator
- * Generates the modern visual boat dive manifesto graphic matching the Sinsay design:
- * - Ocean header with diver silhouette
- * - SINSAY brand logo & title
- * - Floating rounded white card
- * - "| Vessel Details" 8-tile icon specifications
- * - "| Diver List" electric blue table with mint green status pills
+ * Renders the official Municipal Passenger Manifest design matching FormalManifestoPrint.tsx:
+ * - Official Republic of the Philippines / Municipality of Mabini emblem and letterhead
+ * - Top-right Manifest Number and Schedule Date
+ * - "PASSENGER MANIFEST" header with Shore/Boat Dive Record subtitle
+ * - Deep navy (#0D3B66) 3x3 Vessel / Dive Entry information card with #C5D9ED grid
+ * - Deep navy (#0D3B66) Passenger List card with ice-blue (#C8DCF0) column headers
+ * - Diver rows with #0066CC monospace ECO IDs and padded placeholder rows
+ * - Official municipal certification footer
  */
+
+import { MABINI_LGU_LOGO_URI } from "@/constants/lguLogo";
 
 export interface DiverRosterItem {
   name: string;
@@ -18,17 +22,20 @@ export interface DiverRosterItem {
 
 export interface ManifestoImageOptions {
   id: string;
-  operator: string;
-  site: string;
-  date: string;
-  divers: number;
-  verified: boolean;
+  operator?: string | null;
+  site?: string | null;
+  date?: string | null;
+  divers?: number | null;
+  verified?: boolean;
   boatName?: string | null;
+  diveMode?: string | null;
   diveType?: string | null;
+  difficulty?: string | null;
   maxDivers?: number | null;
   captainName?: string | null;
-  boatContact?: string | null;
   crewCount?: number | null;
+  crewMembers?: string[] | null;
+  diveMasters?: string[] | null;
   instructorName?: string | null;
   roster?: DiverRosterItem[] | null;
 }
@@ -54,530 +61,510 @@ function roundRect(
   ctx.closePath();
 }
 
-/**
- * Draws layered organic ocean wave curves transitioning the blue ocean header
- * into the floating white card container.
- * Kept strictly above cardY on the outer edges (X < cardX and X > cardX + cardW)
- * so nothing overflows under or alongside the Vessel Details section.
- */
-function drawOceanWaves(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  cardY: number
-) {
-  // Wave 1: Back Azure Wave (translucent royal/sky blue)
-  ctx.save();
-  ctx.fillStyle = "rgba(120, 185, 255, 0.45)";
-  ctx.beginPath();
-  ctx.moveTo(0, cardY - 22);
-  ctx.bezierCurveTo(
-    width * 0.15,
-    cardY - 12,
-    width * 0.35,
-    cardY - 52,
-    width * 0.50,
-    cardY - 44
-  );
-  ctx.bezierCurveTo(
-    width * 0.68,
-    cardY - 14,
-    width * 0.85,
-    cardY - 32,
-    width,
-    cardY - 24
-  );
-  // Bottom boundary: stays strictly above cardY on the outer edges
-  ctx.lineTo(width, cardY - 12);
-  ctx.bezierCurveTo(
-    width * 0.75,
-    cardY + 6,
-    width * 0.35,
-    cardY + 4,
-    0,
-    cardY - 10
-  );
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-
-  // Wave 2: Front Crest Wave (soft translucent white/cyan)
-  ctx.save();
-  ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
-  ctx.beginPath();
-  ctx.moveTo(0, cardY - 14);
-  ctx.bezierCurveTo(
-    width * 0.28,
-    cardY - 38,
-    width * 0.52,
-    cardY - 16,
-    width * 0.76,
-    cardY - 36
-  );
-  ctx.bezierCurveTo(
-    width * 0.88,
-    cardY - 44,
-    width * 0.96,
-    cardY - 16,
-    width,
-    cardY - 20
-  );
-  // Bottom boundary: stays strictly above cardY on the outer edges
-  ctx.lineTo(width, cardY - 8);
-  ctx.bezierCurveTo(
-    width * 0.75,
-    cardY + 10,
-    width * 0.35,
-    cardY + 8,
-    0,
-    cardY - 6
-  );
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-}
-
-function loadSvgImage(svg: string): Promise<HTMLImageElement> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => resolve(img);
-    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
-  });
-}
-
-function loadLocalImage(src: string): Promise<HTMLImageElement | null> {
-  return new Promise((resolve) => {
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => resolve(img);
-    img.onerror = () => resolve(null);
+    img.onerror = () => reject(new Error("Failed to load image"));
     img.src = src;
   });
 }
-
-// Scuba diver silhouette vector
-const DIVER_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 260" fill="#00357A">
-  <!-- Bubbles floating up -->
-  <circle cx="205" cy="42" r="5" fill="rgba(255,255,255,0.45)"/>
-  <circle cx="225" cy="28" r="6" fill="rgba(255,255,255,0.35)"/>
-  <circle cx="240" cy="16" r="4" fill="rgba(255,255,255,0.55)"/>
-  <circle cx="218" cy="10" r="7" fill="rgba(255,255,255,0.4)"/>
-  <circle cx="250" cy="5" r="3.5" fill="rgba(255,255,255,0.6)"/>
-  <!-- Diver Body in angled swim stroke -->
-  <g transform="rotate(-24 160 130)">
-    <!-- Scuba Tank -->
-    <rect x="110" y="74" width="70" height="24" rx="12" fill="#002D66" opacity="0.95"/>
-    <rect x="180" y="80" width="10" height="12" rx="2" fill="#00224D"/>
-    <!-- Head with Mask & Regulator -->
-    <ellipse cx="200" cy="110" rx="15" ry="14" fill="#003882"/>
-    <path d="M202 100 L218 106 L212 118 L198 116 Z" fill="#00285C"/>
-    <!-- Torso with BCD -->
-    <path d="M115 95 Q145 88 190 100 L185 128 Q140 128 110 116 Z" fill="#003E8F"/>
-    <!-- Left Arm forward -->
-    <path d="M180 116 Q200 132 230 138 L224 146 Q194 138 172 124 Z" fill="#00357A"/>
-    <!-- Right Arm back -->
-    <path d="M125 110 Q110 130 95 145 L90 138 Q105 124 120 105 Z" fill="#002F6E"/>
-    <!-- Legs with dive suit -->
-    <path d="M115 105 Q85 110 60 125 L45 140 Q30 155 10 170 L5 160 Q25 145 45 130 L70 100 Z" fill="#003E8F"/>
-    <path d="M115 112 Q80 120 50 145 L35 165 Q15 185 0 200 L-5 190 Q15 170 35 150 L65 115 Z" fill="#002D66"/>
-    <!-- Long Fins -->
-    <path d="M12 165 L-25 200 L-14 212 L20 176 Z" fill="#002454"/>
-    <path d="M0 195 L-35 230 L-24 242 L10 206 Z" fill="#001F47"/>
-  </g>
-</svg>`;
-
-// Icon SVGs matching the 8 Vessel Details tiles
-const ICONS = {
-  operator: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="#0265D2"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`,
-  location: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="#0265D2"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`,
-  date: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="#0265D2"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z"/><circle cx="8" cy="13" r="1.5"/><circle cx="12" cy="13" r="1.5"/><circle cx="16" cy="13" r="1.5"/><circle cx="8" cy="17" r="1.5"/><circle cx="12" cy="17" r="1.5"/></svg>`,
-  boat: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="#0265D2"><path d="M20 21c-1.39 0-2.78-.47-4-1.32-2.44 1.71-5.56 1.71-8 0C6.78 20.53 5.39 21 4 21H2v2h2c1.38 0 2.74-.35 4-.99 2.52 1.29 5.48 1.29 8 0 1.26.65 2.62.99 4 .99h2v-2h-2zM3.95 19H4c1.6 0 3.02-.88 4-2 .98 1.12 2.4 2 4 2s3.02-.88 4-2c.98 1.12 2.4 2 4 2h.05l1.89-6.68c.08-.26.06-.54-.06-.78s-.34-.42-.6-.47L20 13.01V8.5c0-.83-.67-1.5-1.5-1.5H15V4c0-.55-.45-1-1-1h-4c-.55 0-1 .45-1 1v3H5.5C4.67 7 4 7.67 4 8.5v4.51l-1.28.23c-.26.05-.48.23-.6.47s-.14.52-.06.78L3.95 19zM6 9h12v4.06l-6-.9-6 .9V9z"/></svg>`,
-  divers: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="#0265D2"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>`,
-  tank: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="#0265D2"><path d="M11 2h2v2h-2zM9 4h6v2H9zM7 8c0-1.1.9-2 2-2h6c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H9c-1.1 0-2-.9-2-2V8zm4 3h2v6h-2v-6z"/></svg>`,
-  capacity: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="#0265D2"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>`,
-  captain: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="#0265D2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/><path d="M6 10h12v2H6z"/></svg>`,
-  check: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="#059669"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg>`,
-};
 
 export async function generateManifestoImageBlob(
   options: ManifestoImageOptions
 ): Promise<Blob> {
   const {
     id,
-    operator,
-    site,
-    date,
-    divers,
-    boatName = "Bantay Dagat",
-    diveType = "Scuba Diving",
+    operator = "Magtibay",
+    site = "Mainit, Mabini, Batangas",
+    date = "",
+    divers = 1,
+    verified = false,
+    boatName,
+    diveMode,
+    diveType,
+    difficulty = "Beginner",
     maxDivers,
     captainName,
+    crewCount,
+    crewMembers,
+    diveMasters,
     instructorName,
     roster,
   } = options;
 
-  const diversCount = Math.max(divers || 1, roster?.length || 1);
-  const rows =
+  // Format Manifest Number
+  const rawId = (id || "0001").trim();
+  const manifestNumber = rawId.startsWith("MF-")
+    ? rawId
+    : rawId.length > 10
+      ? `2026-${rawId.slice(0, 8).toUpperCase()}`
+      : `2026-${rawId.toUpperCase()}`;
+
+  // Format Date (e.g. "Nov 9, 2026")
+  let formattedDate = date || "Nov 9, 2026";
+  if (date) {
+    try {
+      const d = new Date(date.length <= 10 ? date + "T00:00:00" : date);
+      if (!isNaN(d.getTime())) {
+        formattedDate = d.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        });
+      }
+    } catch {
+      formattedDate = date;
+    }
+  }
+
+  // Detect Dive Mode
+  const rawMode = (diveMode || "").toLowerCase();
+  const isBoatDive =
+    rawMode.includes("boat") ||
+    (!rawMode.includes("shore") && Boolean(boatName && boatName !== "Shore Base"));
+
+  const subHeaderTitle = isBoatDive ? "Boat Dive Record" : "Shore Dive Record";
+  const resolvedOperator = (operator || "Magtibay").trim();
+  const diveSiteDisplay = (site || (isBoatDive ? "Anilao Dive Site" : "Mainit, Mabini, Batangas")).trim();
+  const diveTypeDisplay = (diveType || (isBoatDive ? "Scuba Diving" : "Free Diving")).trim();
+  const difficultyDisplay = (difficulty || "Beginner").trim();
+
+  // Lead Divemaster / Guide
+  const dms = (diveMasters || []).map((s) => s.trim()).filter(Boolean);
+  const leadDmDisplay =
+    dms.length > 0
+      ? dms.join(", ")
+      : (instructorName || "").trim() || "—";
+
+  // Crew / Captain
+  const captainDisplay = (captainName || "").trim() || "—";
+  const crews = (crewMembers || []).map((s) => s.trim()).filter(Boolean);
+  const crewDisplay =
+    crews.length > 0
+      ? crews.join(", ")
+      : crewCount
+        ? `${crewCount} Vessel Crew`
+        : "—";
+
+  const vesselNameDisplay = (boatName || (isBoatDive ? "Official Dive Vessel" : "Shore Base")).trim();
+  const diverCount = Math.max(divers || 0, roster?.length || 0) || 1;
+  const maxCap = maxDivers || (isBoatDive ? 22 : 30);
+
+  // Normalizing Diver Roster
+  const normalizedDivers: DiverRosterItem[] =
     roster && roster.length > 0
       ? roster
-      : Array.from({ length: diversCount }, (_, i) => ({
-          name: i === 0 ? "John Smith" : "Jhon Mcneil Magtilay",
-          ecoId: i === 0 ? null : "VERIFIED ID",
-          isWalkIn: i === 0,
-          level: i === 0 ? "Walk-in Registration" : "Open Water Diver",
-          nationality: "Philippines",
-        }));
+      : [
+          {
+            name: "Jhon Mcneil Magtibay",
+            nationality: "Philippines",
+            ecoId: "ECO-2026-100005",
+          },
+        ];
 
-  // Geometry
-  const width = 1100;
-  const headerHeight = 360;
-  const cardPadding = 36;
-  const cardY = 280;
-  const tileH = 68;
-  const tileGap = 14;
-  const vesselGridHeight = tileH * 2 + tileGap; // 150
-  const tableHeaderHeight = 44;
-  const rowHeight = 52;
-  const tableHeight = tableHeaderHeight + rows.length * rowHeight;
-  const cardBottomPadding = 56;
-  const cardHeight =
-    cardPadding + 38 + vesselGridHeight + 36 + 34 + tableHeight + cardBottomPadding;
+  const minRows = 5;
+  const emptyRowCount = Math.max(1, minRows - normalizedDivers.length);
+  const totalPassengerRows = normalizedDivers.length + emptyRowCount;
 
-  const bottomPageMargin = 64;
-  const height = cardY + cardHeight + bottomPageMargin;
+  // Geometry Setup (Canvas width 1024px @ 2x pixel ratio for crystal clear text)
+  const width = 1024;
+  const cardX = 48;
+  const cardW = width - cardX * 2; // 928px
 
+  const section1Top = 212;
+  const section1Height = 186; // 38 header + 3 * 49 rows approx = 185px
+
+  const section2Top = section1Top + section1Height + 22; // 420
+  const section2RowHeight = 40;
+  const section2HeaderH = 38;
+  const section2ColHeaderH = 38;
+  const section2Height =
+    section2HeaderH + section2ColHeaderH + totalPassengerRows * section2RowHeight;
+
+  const footerTop = section2Top + section2Height + 20;
+  const footerHeight = 44;
+  const height = footerTop + footerHeight + 36;
+
+  // Create Canvas with Retina 2x Resolution
   const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
+  const scale = 2;
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Could not initialize canvas context");
+  ctx.scale(scale, scale);
 
-  // Load vector icons & logo
-  const [bgImg, sinsayLogoImg, opIcon, locIcon, dateIcon, boatIcon, divIcon, tankIcon, capIcon, captIcon, checkIcon] =
-    await Promise.all([
-      loadLocalImage("/manifesto-bg.png"),
-      loadLocalImage("/sinsay-logo-white.png"),
-      loadSvgImage(ICONS.operator),
-      loadSvgImage(ICONS.location),
-      loadSvgImage(ICONS.date),
-      loadSvgImage(ICONS.boat),
-      loadSvgImage(ICONS.divers),
-      loadSvgImage(ICONS.tank),
-      loadSvgImage(ICONS.capacity),
-      loadSvgImage(ICONS.captain),
-      loadSvgImage(ICONS.check),
-    ]);
-
-  // 0. Soft light blue page background
-  ctx.fillStyle = "#EEF5FD";
+  // Background Fill (Pure White)
+  ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, width, height);
 
-  // 1. Ocean Blue Header Background (using the uploaded illustration)
-  // Clipped strictly to the wave curve so no artwork spills below or beside Vessel Details
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(width, 0);
-  ctx.lineTo(width, cardY - 24);
-  ctx.bezierCurveTo(
-    width * 0.85,
-    cardY - 32,
-    width * 0.68,
-    cardY - 14,
-    width * 0.50,
-    cardY - 44
-  );
-  ctx.bezierCurveTo(
-    width * 0.35,
-    cardY - 52,
-    width * 0.15,
-    cardY - 12,
-    0,
-    cardY - 22
-  );
-  ctx.closePath();
-  ctx.clip();
-
-  const drawH = 340;
-  if (bgImg && bgImg.width > 0) {
-    const imgRatio = bgImg.width / bgImg.height;
-    const canvasRatio = width / drawH;
-    let sx = 0, sy = 0, sw = bgImg.width, sh = bgImg.height;
-    if (imgRatio > canvasRatio) {
-      sw = bgImg.height * canvasRatio;
-      sx = (bgImg.width - sw) / 2;
-    } else {
-      sh = bgImg.width / canvasRatio;
-      sy = (bgImg.height - sh) / 2;
-    }
-    ctx.drawImage(bgImg, sx, sy, sw, sh, 0, 0, width, drawH);
-  } else {
-    const oceanGrad = ctx.createLinearGradient(0, 0, width, headerHeight);
-    oceanGrad.addColorStop(0, "#0175F2");
-    oceanGrad.addColorStop(0.5, "#015FD0");
-    oceanGrad.addColorStop(1, "#0047AE");
-    ctx.fillStyle = oceanGrad;
-    ctx.fillRect(0, 0, width, headerHeight + 50);
-  }
-  ctx.restore();
-
-  // 2. SINSAY Brand Logo
-  if (sinsayLogoImg && sinsayLogoImg.width > 0) {
-    const logoH = 46;
-    const logoW = logoH * (sinsayLogoImg.width / sinsayLogoImg.height);
-    ctx.drawImage(sinsayLogoImg, 56, 56, logoW, logoH);
-  } else {
-    ctx.textAlign = "left";
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = "900 44px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-    ctx.fillText("SINSAY", 56, 100);
-  }
-
-  // Underline decorative capsule pill
-  ctx.fillStyle = "#60A5FA";
-  roundRect(ctx, 56, 114, 46, 5, 2.5);
-  ctx.fill();
-
-  // "Official Boat Dive Manifesto" Title
-  ctx.fillStyle = "#FFFFFF";
-  ctx.font = "bold 38px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-  ctx.fillText("Official Boat Dive", 56, 182);
-  ctx.fillText("Manifesto", 56, 230);
-
-  // Layered Ocean Waves Transition into Vessel Details
-  drawOceanWaves(ctx, width, cardY);
-
-  // 3. Floating White Container Card
-  const cardX = 36;
-  const cardW = width - cardX * 2;
-  const actualCardH = cardHeight;
-
-  // Drop shadow for card
-  ctx.save();
-  ctx.shadowColor = "rgba(0, 40, 110, 0.25)";
-  ctx.shadowBlur = 35;
-  ctx.shadowOffsetY = 15;
-  ctx.fillStyle = "#FFFFFF";
-  roundRect(ctx, cardX, cardY, cardW, actualCardH, 24);
-  ctx.fill();
-  ctx.restore();
-
-  // Subtle border on card
+  // Subtle outer document border with rounded corners
   ctx.strokeStyle = "#E2E8F0";
-  ctx.lineWidth = 1.5;
-  roundRect(ctx, cardX, cardY, cardW, actualCardH, 24);
+  ctx.lineWidth = 1;
+  roundRect(ctx, 16, 16, width - 32, height - 32, 16);
   ctx.stroke();
 
-  let curY = cardY + cardPadding;
+  // Load Official Mabini Seal
+  try {
+    const sealImg = await loadImage(MABINI_LGU_LOGO_URI);
+    ctx.drawImage(sealImg, cardX, 36, 76, 76);
+  } catch {
+    // If logo fails to load, continue gracefully
+  }
 
-  // 4. Section 1: "| Vessel Details"
-  const bluePillX = cardX + cardPadding;
-  ctx.fillStyle = "#0066EE";
-  roundRect(ctx, bluePillX, curY + 2, 5, 22, 2.5);
-  ctx.fill();
-
+  // Header Letterhead Text
+  const textX = cardX + 90;
   ctx.textAlign = "left";
+
+  // "REPUBLIC OF THE PHILIPPINES"
+  ctx.fillStyle = "#475569";
+  ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
+  ctx.fillText("REPUBLIC OF THE PHILIPPINES", textX, 48);
+
+  // "PROVINCE OF BATANGAS • MUNICIPALITY OF MABINI"
   ctx.fillStyle = "#0F172A";
-  ctx.font = "bold 22px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-  ctx.fillText("Vessel Details", bluePillX + 16, curY + 20);
+  ctx.font = "bold 13.5px system-ui, -apple-system, sans-serif";
+  ctx.fillText("PROVINCE OF BATANGAS • MUNICIPALITY OF MABINI", textX, 68);
 
-  curY += 38;
+  // "MUNICIPAL TOURISM & MARITIME SAFETY OFFICE"
+  ctx.fillStyle = "#0D3B66";
+  ctx.font = "bold 12px system-ui, -apple-system, sans-serif";
+  ctx.fillText("MUNICIPAL TOURISM & MARITIME SAFETY OFFICE", textX, 88);
 
-  // 8 Vessel Tiles in 4x2 Grid
-  const gridW = cardW - cardPadding * 2;
-  const tileW = (gridW - tileGap * 3) / 4;
+  // "Operating Resort: <Operator>"
+  ctx.fillStyle = "#0066CC";
+  ctx.font = "600 12px system-ui, -apple-system, sans-serif";
+  ctx.fillText("Operating Resort: ", textX, 107);
+  const opLabelW = ctx.measureText("Operating Resort: ").width;
+  ctx.fillStyle = "#0066CC";
+  ctx.font = "bold 12px system-ui, -apple-system, sans-serif";
+  ctx.fillText(resolvedOperator, textX + opLabelW, 107);
 
-  const tileData = [
-    { icon: opIcon, label: "ACCREDITED OPERATOR", val: operator || "Magtilay" },
-    { icon: locIcon, label: "DIVE LOCATION", val: site || "Anilao Pier" },
-    { icon: dateIcon, label: "VOYAGE DATE", val: date },
-    { icon: boatIcon, label: "VESSEL / BOAT", val: boatName || "Bantay Dagat" },
-    { icon: divIcon, label: "DIVERS ONBOARD", val: `${diversCount} Certified Divers` },
-    { icon: tankIcon, label: "DIVE TYPE", val: diveType || "Scuba Diving" },
-    { icon: capIcon, label: "CAPACITY", val: maxDivers ? `${diversCount}/${maxDivers} Max` : `${diversCount}/22 Max` },
-    { icon: captIcon, label: "GUIDE / CAPTAIN", val: captainName || instructorName || "Licensed Guide" },
+  // Right Meta: Manifest No. & Schedule Date
+  ctx.textAlign = "right";
+  const rightX = cardX + cardW;
+
+  ctx.fillStyle = "#0F172A";
+  ctx.font = "bold 14px system-ui, -apple-system, sans-serif";
+  ctx.fillText(`Manifest No. ${manifestNumber}`, rightX, 58);
+
+  ctx.fillStyle = "#334155";
+  ctx.font = "600 13px system-ui, -apple-system, sans-serif";
+  ctx.fillText(`Date: ${formattedDate}`, rightX, 80);
+
+  // Centered Document Title Block
+  ctx.textAlign = "center";
+  const midX = width / 2;
+
+  ctx.fillStyle = "#0D3B66";
+  ctx.font = "bold 26px system-ui, -apple-system, sans-serif";
+  ctx.fillText("PASSENGER MANIFEST", midX, 154);
+
+  ctx.fillStyle = "#0F172A";
+  ctx.font = "bold 14.5px system-ui, -apple-system, sans-serif";
+  ctx.fillText(subHeaderTitle, midX, 178);
+
+  // Title Divider Line
+  ctx.fillStyle = "#0D3B66";
+  ctx.fillRect(cardX, 194, cardW, 2);
+
+  // ==========================================
+  // SECTION 1: Dive Site & Entry / Vessel Info
+  // ==========================================
+  const s1HeaderTitle = isBoatDive
+    ? "Vessel & Trip Information"
+    : "Dive Site & Entry Information";
+
+  // Card Outer Container
+  ctx.fillStyle = "#FFFFFF";
+  roundRect(ctx, cardX, section1Top, cardW, section1Height, 8);
+  ctx.fill();
+  ctx.strokeStyle = "#B8D2EB";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Section 1 Header Bar (#0D3B66)
+  ctx.save();
+  ctx.beginPath();
+  roundRect(ctx, cardX, section1Top, cardW, 38, 8);
+  ctx.clip();
+  ctx.fillStyle = "#0D3B66";
+  ctx.fillRect(cardX, section1Top, cardW, 38);
+  ctx.restore();
+
+  // Section 1 Header Title Text
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = "bold 14px system-ui, -apple-system, sans-serif";
+  ctx.fillText(s1HeaderTitle, cardX + 16, section1Top + 24);
+
+  // Grid Data (3 Rows x 3 Cols)
+  const colW = cardW / 3;
+  const rowH = (section1Height - 38) / 3; // ~49.3px
+
+  interface TileData {
+    label: string;
+    value: string;
+  }
+
+  const shoreGrid: TileData[][] = [
+    [
+      { label: "Dive Site / Shore Entry", value: diveSiteDisplay },
+      { label: "Dive Mode", value: "Shore Entry Dive" },
+      { label: "Dive Type", value: diveTypeDisplay },
+    ],
+    [
+      { label: "Lead Divemaster / Guide", value: leadDmDisplay },
+      { label: "Operating Resort", value: resolvedOperator },
+      { label: "Difficulty Tier", value: difficultyDisplay },
+    ],
+    [
+      { label: "Registered Divers", value: `${diverCount} Divers Registered` },
+      { label: "Schedule Date", value: formattedDate },
+      { label: "Safety Protocol", value: "Standard PCSSD Protocols" },
+    ],
   ];
 
-  tileData.forEach((t, i) => {
-    const col = i % 4;
-    const row = Math.floor(i / 4);
-    const tx = cardX + cardPadding + col * (tileW + tileGap);
-    const ty = curY + row * (tileH + tileGap);
+  const boatGrid: TileData[][] = [
+    [
+      { label: "Vessel Name", value: vesselNameDisplay },
+      { label: "Dive Site / Destination", value: diveSiteDisplay },
+      { label: "Dive Mode & Type", value: `Boat Dive • ${diveTypeDisplay}` },
+    ],
+    [
+      { label: "Boat Captain", value: captainDisplay },
+      { label: "Lead Divemaster / Guide", value: leadDmDisplay },
+      { label: "Crew Members", value: crewDisplay },
+    ],
+    [
+      { label: "Diver Capacity", value: `${diverCount} / ${maxCap} Max Divers` },
+      { label: "Difficulty Tier", value: difficultyDisplay },
+      { label: "Departure Date", value: formattedDate },
+    ],
+  ];
 
-    // Tile rounded background
-    ctx.fillStyle = "#F1F6FD";
-    roundRect(ctx, tx, ty, tileW, tileH, 12);
-    ctx.fill();
+  const gridData = isBoatDive ? boatGrid : shoreGrid;
 
-    // Tile soft border
-    ctx.strokeStyle = "#E4EDFA";
-    ctx.lineWidth = 1;
-    roundRect(ctx, tx, ty, tileW, tileH, 12);
-    ctx.stroke();
+  for (let r = 0; r < 3; r++) {
+    const yRow = section1Top + 38 + r * rowH;
 
-    // Tile Icon
-    ctx.drawImage(t.icon, tx + 14, ty + (tileH - 24) / 2, 24, 24);
-
-    // Tile Label
-    ctx.textAlign = "left";
-    ctx.fillStyle = "#8FA5BE";
-    ctx.font = "bold 9px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-    ctx.fillText(t.label, tx + 48, ty + 28);
-
-    // Tile Value
-    ctx.fillStyle = "#0F172A";
-    ctx.font = "bold 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-
-    // Text truncation if needed
-    let valStr = t.val;
-    const maxTextW = tileW - 56;
-    if (ctx.measureText(valStr).width > maxTextW) {
-      while (valStr.length > 3 && ctx.measureText(valStr + "…").width > maxTextW) {
-        valStr = valStr.slice(0, -1);
-      }
-      valStr += "…";
+    // Horizontal Row Divider
+    if (r > 0) {
+      ctx.strokeStyle = "#C5D9ED";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cardX, yRow);
+      ctx.lineTo(cardX + cardW, yRow);
+      ctx.stroke();
     }
-    ctx.fillText(valStr, tx + 48, ty + 49);
-  });
 
-  curY += tileH * 2 + tileGap + 36;
+    for (let c = 0; c < 3; c++) {
+      const xCol = cardX + c * colW;
 
-  // 5. Section 2: "| Diver List"
-  ctx.fillStyle = "#0066EE";
-  roundRect(ctx, bluePillX, curY + 2, 5, 22, 2.5);
-  ctx.fill();
+      // Vertical Column Divider
+      if (c > 0) {
+        ctx.strokeStyle = "#C5D9ED";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(xCol, yRow);
+        ctx.lineTo(xCol, yRow + rowH);
+        ctx.stroke();
+      }
 
-  ctx.fillStyle = "#0F172A";
-  ctx.font = "bold 22px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-  ctx.fillText("Diver List", bluePillX + 16, curY + 20);
+      const item = gridData[r][c];
 
-  curY += 34;
+      // Tile Label
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#334E68";
+      ctx.font = "600 11.5px system-ui, -apple-system, sans-serif";
+      ctx.fillText(item.label, xCol + 14, yRow + 18);
 
-  // Table Container
-  const tableX = cardX + cardPadding;
-  const tableW = cardW - cardPadding * 2;
+      // Tile Value
+      ctx.fillStyle = "#0A2540";
+      ctx.font = "bold 13px system-ui, -apple-system, sans-serif";
 
-  // Table Header Background (Electric Blue)
-  ctx.fillStyle = "#0066EE";
-  roundRect(ctx, tableX, curY, tableW, tableHeaderHeight, 8);
-  ctx.fill();
+      // Truncate text if exceeds colW
+      let val = item.value;
+      const maxW = colW - 28;
+      if (ctx.measureText(val).width > maxW) {
+        while (ctx.measureText(val + "…").width > maxW && val.length > 0) {
+          val = val.slice(0, -1);
+        }
+        val += "…";
+      }
+      ctx.fillText(val, xCol + 14, yRow + 36);
+    }
+  }
 
-  // Column X Coordinates & Widths
-  const colX = {
-    num: tableX + 28,
-    name: tableX + 60,
-    eco: tableX + 285,
-    cert: tableX + 440,
-    feeCenter: tableX + 680,
-    waiverCenter: tableX + 845,
-  };
-
+  // ==========================================
+  // SECTION 2: Passenger List Card
+  // ==========================================
   ctx.fillStyle = "#FFFFFF";
-  ctx.font = "bold 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  roundRect(ctx, cardX, section2Top, cardW, section2Height, 8);
+  ctx.fill();
+  ctx.strokeStyle = "#B8D2EB";
+  ctx.lineWidth = 1;
+  ctx.stroke();
 
-  ctx.textAlign = "center";
-  ctx.fillText("#", colX.num, curY + 27);
+  // Section 2 Header Bar (#0D3B66)
+  ctx.save();
+  ctx.beginPath();
+  roundRect(ctx, cardX, section2Top, cardW, 38, 8);
+  ctx.clip();
+  ctx.fillStyle = "#0D3B66";
+  ctx.fillRect(cardX, section2Top, cardW, 38);
+  ctx.restore();
 
   ctx.textAlign = "left";
-  ctx.fillText("DIVER PASSENGER NAME", colX.name, curY + 27);
-  ctx.fillText("ECO DIVE ID", colX.eco, curY + 27);
-  ctx.fillText("CERTIFICATION / STATUS", colX.cert, curY + 27);
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = "bold 14px system-ui, -apple-system, sans-serif";
+  ctx.fillText("Passenger List", cardX + 16, section2Top + 24);
+
+  // Ice-Blue Sub-Headers Bar (#C8DCF0)
+  const colSubY = section2Top + 38;
+  ctx.fillStyle = "#C8DCF0";
+  ctx.fillRect(cardX, colSubY, cardW, 38);
+  ctx.strokeStyle = "#B8D2EB";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cardX, colSubY + 38);
+  ctx.lineTo(cardX + cardW, colSubY + 38);
+  ctx.stroke();
+
+  // Columns Widths:
+  // Col 1 (No.): 64px
+  // Col 2 (Diver Passenger Name): 448px
+  // Col 3 (Nationality): 180px
+  // Col 4 (ECO ID / ID No.): 236px
+  const wNo = 64;
+  const wNat = 180;
+  const wEco = 236;
+  const wName = cardW - wNo - wNat - wEco; // 448px
+
+  const xNo = cardX;
+  const xName = xNo + wNo;
+  const xNat = xName + wName;
+  const xEco = xNat + wNat;
+
+  // Sub-header Column Divider Lines
+  ctx.strokeStyle = "#B8D2EB";
+  ctx.lineWidth = 1;
+
+  ctx.beginPath();
+  ctx.moveTo(xName, colSubY);
+  ctx.lineTo(xName, colSubY + 38);
+  ctx.moveTo(xNat, colSubY);
+  ctx.lineTo(xNat, colSubY + 38);
+  ctx.moveTo(xEco, colSubY);
+  ctx.lineTo(xEco, colSubY + 38);
+  ctx.stroke();
+
+  // Sub-header Labels
+  ctx.fillStyle = "#0A2540";
+  ctx.font = "bold 13px system-ui, -apple-system, sans-serif";
 
   ctx.textAlign = "center";
-  ctx.fillText("MUNICIPAL FEE", colX.feeCenter, curY + 27);
-  ctx.fillText("SAFETY WAIVER", colX.waiverCenter, curY + 27);
+  ctx.fillText("No.", xNo + wNo / 2, colSubY + 24);
 
-  curY += tableHeaderHeight;
+  ctx.textAlign = "left";
+  ctx.fillText("Diver Passenger Name", xName + 16, colSubY + 24);
 
-  // Table Rows
-  rows.forEach((r, idx) => {
-    const rowY = curY + idx * rowHeight;
+  ctx.textAlign = "center";
+  ctx.fillText("Nationality", xNat + wNat / 2, colSubY + 24);
+  ctx.fillText("ECO ID / ID No.", xEco + wEco / 2, colSubY + 24);
 
-    // Row divider
-    ctx.strokeStyle = "#E8EEF7";
+  // Render Passenger Rows
+  const rowsStartY = colSubY + 38;
+
+  for (let idx = 0; idx < totalPassengerRows; idx++) {
+    const rowY = rowsStartY + idx * section2RowHeight;
+    const isRealDiver = idx < normalizedDivers.length;
+    const diver = isRealDiver ? normalizedDivers[idx] : null;
+
+    // Bottom border for each row
+    ctx.strokeStyle = "#C5D9ED";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(tableX, rowY + rowHeight);
-    ctx.lineTo(tableX + tableW, rowY + rowHeight);
+    ctx.moveTo(cardX, rowY + section2RowHeight);
+    ctx.lineTo(cardX + cardW, rowY + section2RowHeight);
     ctx.stroke();
 
-    // Col 1: #
-    ctx.textAlign = "center";
-    ctx.fillStyle = "#0F172A";
-    ctx.font = "bold 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-    ctx.fillText(String(idx + 1), colX.num, rowY + 31);
-
-    // Col 2: Diver Name
-    ctx.textAlign = "left";
-    ctx.fillStyle = "#0F172A";
-    ctx.font = "bold 13.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-    ctx.fillText(r.name, colX.name, rowY + 31);
-
-    // Col 3: Eco Dive ID Pill
-    const ecoText = r.ecoId || (r.isWalkIn ? "WALK-IN GUEST" : "VERIFIED ID");
-    ctx.textAlign = "left";
-    ctx.fillStyle = "#0265D2";
-    ctx.font = "bold 11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-    ctx.fillText(ecoText, colX.eco, rowY + 31);
-
-    // Col 4: Certification Level
-    ctx.textAlign = "left";
-    ctx.fillStyle = "#334155";
-    ctx.font = "500 13px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-    ctx.fillText(
-      r.level || (r.isWalkIn ? "Walk-in Registration" : "Open Water Diver"),
-      colX.cert,
-      rowY + 31
-    );
-
-    // Col 5: Municipal Fee Badge (Mint Green)
-    const feePillW = 116;
-    const feePillH = 28;
-    const feePillX = colX.feeCenter - feePillW / 2;
-    const feePillY = rowY + (rowHeight - feePillH) / 2;
-
-    ctx.fillStyle = "#ECFDF5";
-    roundRect(ctx, feePillX, feePillY, feePillW, feePillH, 14);
-    ctx.fill();
-
-    ctx.strokeStyle = "#A7F3D0";
-    ctx.lineWidth = 1;
-    roundRect(ctx, feePillX, feePillY, feePillW, feePillH, 14);
+    // Column Dividers
+    ctx.beginPath();
+    ctx.moveTo(xName, rowY);
+    ctx.lineTo(xName, rowY + section2RowHeight);
+    ctx.moveTo(xNat, rowY);
+    ctx.lineTo(xNat, rowY + section2RowHeight);
+    ctx.moveTo(xEco, rowY);
+    ctx.lineTo(xEco, rowY + section2RowHeight);
     ctx.stroke();
 
-    ctx.textAlign = "center";
+    if (diver) {
+      // Col 1: No.
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#0A2540";
+      ctx.font = "bold 13px system-ui, -apple-system, sans-serif";
+      ctx.fillText(String(idx + 1), xNo + wNo / 2, rowY + 25);
+
+      // Col 2: Diver Name
+      ctx.textAlign = "left";
+      ctx.font = "bold 13px system-ui, -apple-system, sans-serif";
+      ctx.fillText(diver.name, xName + 16, rowY + 25);
+
+      // Col 3: Nationality
+      ctx.textAlign = "center";
+      ctx.font = "500 13px system-ui, -apple-system, sans-serif";
+      ctx.fillStyle = "#334155";
+      ctx.fillText(diver.nationality || "Philippines", xNat + wNat / 2, rowY + 25);
+
+      // Col 4: ECO ID (Blue Mono)
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#0066CC";
+      ctx.font = "bold 13px monospace, monospace";
+      ctx.fillText(diver.ecoId || "ECO-2026-100005", xEco + wEco / 2, rowY + 25);
+    } else {
+      // Empty placeholder row
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#94A3B8";
+      ctx.font = "12px system-ui, -apple-system, sans-serif";
+      ctx.fillText("—", xNo + wNo / 2, rowY + 25);
+      ctx.fillText("—", xNat + wNat / 2, rowY + 25);
+      ctx.fillText("—", xEco + wEco / 2, rowY + 25);
+    }
+  }
+
+  // ==========================================
+  // SECTION 3: Official Verification Footer
+  // ==========================================
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#64748B";
+  ctx.font = "600 11.5px system-ui, -apple-system, sans-serif";
+  ctx.fillText(
+    "Official Passenger Manifest • Mabini Municipal Tourism & Maritime Safety Office",
+    cardX + 4,
+    footerTop + 24
+  );
+
+  // Status Badge on the right
+  ctx.textAlign = "right";
+  if (verified) {
     ctx.fillStyle = "#059669";
-    ctx.font = "bold 10px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-    ctx.fillText("PAID & CLEARED", colX.feeCenter, feePillY + 18);
+    ctx.font = "bold 12px system-ui, -apple-system, sans-serif";
+    ctx.fillText("✓ Officially Verified & Cleared", rightX - 4, footerTop + 24);
+  } else {
+    ctx.fillStyle = "#D97706";
+    ctx.font = "bold 12px system-ui, -apple-system, sans-serif";
+    ctx.fillText("• Registered Manifest Record", rightX - 4, footerTop + 24);
+  }
 
-    // Col 6: Safety Waiver Badge (Mint Green with Checkmark)
-    const wPillW = 96;
-    const wPillH = 28;
-    const wPillX = colX.waiverCenter - wPillW / 2;
-    const wPillY = rowY + (rowHeight - wPillH) / 2;
-
-    ctx.fillStyle = "#ECFDF5";
-    roundRect(ctx, wPillX, wPillY, wPillW, wPillH, 14);
-    ctx.fill();
-
-    ctx.strokeStyle = "#A7F3D0";
-    ctx.lineWidth = 1;
-    roundRect(ctx, wPillX, wPillY, wPillW, wPillH, 14);
-    ctx.stroke();
-
-    // Draw check icon
-    ctx.drawImage(checkIcon, wPillX + 16, wPillY + 7, 14, 14);
-
-    ctx.textAlign = "left";
-    ctx.fillStyle = "#059669";
-    ctx.font = "bold 10.5px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-    ctx.fillText("SIGNED", wPillX + 36, wPillY + 18);
-  });
-
+  // Export to PNG Blob
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (blob) resolve(blob);
-      else reject(new Error("Canvas toBlob failed"));
+      else reject(new Error("Canvas toBlob export failed"));
     }, "image/png");
   });
 }
@@ -587,7 +574,8 @@ export async function downloadManifestoImage(
   filename?: string
 ): Promise<void> {
   const blob = await generateManifestoImageBlob(options);
-  const fname = filename || `Sinsay-Manifesto-${options.id}-${options.date}.png`;
+  const cleanId = (options.id || "0001").replace(/[^a-zA-Z0-9_-]/g, "");
+  const fname = filename || `Passenger-Manifest-${cleanId}-${options.date || "2026"}.png`;
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -597,5 +585,5 @@ export async function downloadManifestoImage(
   setTimeout(() => {
     if (a.parentNode) document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, 100);
+  }, 120);
 }
