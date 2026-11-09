@@ -62,10 +62,13 @@ export function useMounted() {
 
 export function useCountUp(target: number, duration = 900) {
   const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-40px" });
-  const [val, setVal] = useState(0);
+  const inView = useInView(ref, { once: true, margin: "0px" });
+  const [val, setVal] = useState(target);
   useEffect(() => {
-    if (!inView) return;
+    if (!inView) {
+      setVal(target);
+      return;
+    }
     let raf = 0;
     const start = performance.now();
     const tick = (now: number) => {
@@ -77,7 +80,7 @@ export function useCountUp(target: number, duration = 900) {
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [inView, target, duration]);
-  return { ref, val };
+  return { ref, val: inView ? val : target };
 }
 
 export function CountUp({

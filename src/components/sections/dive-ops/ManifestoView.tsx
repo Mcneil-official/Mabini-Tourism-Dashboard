@@ -16,7 +16,6 @@ import {
   SlidersHorizontal,
   Eye,
   EyeOff,
-  CalendarIcon,
   Send,
   X,
   ChevronRight,
@@ -26,7 +25,12 @@ import {
   AlertCircle,
   Printer,
   ExternalLink,
+  FileDown,
+  MessageCircle,
+  Share2,
+  Copy,
 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { downloadCsv } from "@/lib/export-utils";
 import {
   FormalManifestoPrint,
@@ -78,12 +82,13 @@ import {
 import { useFilters } from "@/hooks/useFilters";
 import { usePermission } from "@/hooks/usePermission";
 import { useGlobalDateRange } from "@/hooks/useGlobalDateRange";
-import { todayInManila, clampDateToToday } from "@/lib/period";
 import { pushAuditLog } from "@/lib/audit";
 import { requireLiveSession } from "@/lib/staff-auth";
+import { downloadManifestoImage, generateManifestoImageBlob } from "@/lib/manifesto-image";
 import {
   useLiveMode,
   useManifestsLive,
+  useDiveSitesLive,
   useInvalidateLive,
   useLiveList,
   setManifestVerified,
@@ -223,9 +228,8 @@ export function ManifestoView() {
         )
           return false;
       }
-      if (search.dateFrom && m.date < search.dateFrom) return false;
-      if (search.dateTo && m.date > search.dateTo) return false;
-            if (verificationFilter === "verified" && !isVerified(m)) return false;
+      if (!inRange(m.date)) return false;
+      if (verificationFilter === "verified" && !isVerified(m)) return false;
       if (verificationFilter === "unverified" && isVerified(m)) return false;
       return true;
     });
@@ -236,8 +240,6 @@ export function ManifestoView() {
     verificationFilter,
     search.q,
     search.site,
-    search.dateFrom,
-    search.dateTo,
     inRange,
   ]);
 
@@ -263,10 +265,6 @@ export function ManifestoView() {
     activeFilters.push({ key: "site", label: `Site: ${search.site}` });
   if (search.q)
     activeFilters.push({ key: "q", label: `Search: "${search.q}"` });
-  if (search.dateFrom)
-    activeFilters.push({ key: "dateFrom", label: `From: ${search.dateFrom}` });
-  if (search.dateTo)
-    activeFilters.push({ key: "dateTo", label: `To: ${search.dateTo}` });
   if (verificationFilter !== "all")
     activeFilters.push({
       key: "verification",
@@ -276,8 +274,6 @@ export function ManifestoView() {
   const handleRemoveFilter = (key: string) => {
     if (key === "q") setFilters({ q: "" });
     else if (key === "site") setFilters({ site: "All" });
-    else if (key === "dateFrom") setFilters({ dateFrom: "" });
-    else if (key === "dateTo") setFilters({ dateTo: "" });
     else if (key === "verification") setVerificationFilter("all");
   };
 
@@ -332,15 +328,19 @@ export function ManifestoView() {
       await downloadManifestoImage({
         id: m.id,
         operator: m.operator,
-        site: m.site,
-        date: m.date,
-        divers: m.divers,
+        site: m.site || m.location,
+        date: m.date || m.dive_date,
+        divers: m.divers || m.diver_count,
         verified: isVerified(m),
-        boatName: (m as any).boatName,
-        diveType: (m as any).diveType,
-        maxDivers: (m as any).maxDivers,
-        captainName: (m as any).captainName,
-        instructorName: (m as any).instructorName,
+        boatName: m.boatName || m.boat_name,
+        diveMode: m.diveMode || m.dive_mode,
+        diveType: m.diveType || m.dive_type,
+        difficulty: m.difficulty,
+        maxDivers: m.maxDivers || m.max_divers,
+        captainName: m.captainName || m.captain_name,
+        instructorName: m.instructorName || m.instructor_name,
+        crewMembers: m.crewMembers || m.crew_members,
+        diveMasters: m.diveMasters || m.dive_masters,
         roster: diverRows,
       });
       toast.success("Manifesto Image Downloaded", {
@@ -467,38 +467,12 @@ export function ManifestoView() {
               ))}
             </SelectContent>
           </Select>
-          <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground whitespace-nowrap">
-              From
-            </Label>
-            <Input
-              type="date"
-              value={search.dateFrom}
-              onChange={(e) =>
-                setFilters({ dateFrom: e.target.value })
-              }
-              className="w-40"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground whitespace-nowrap">
-              To
-            </Label>
-            <Input
-              type="date"
-              value={search.dateTo}
-              onChange={(e) =>
-                setFilters({ dateTo: e.target.value })
-              }
-              className="w-40"
-            />
-          </div>
           {activeFilters.length > 0 && (
             <Button
               variant="ghost"
               size="sm"
               onClick={() => {
-                setFilters({ q: "", site: "All", dateFrom: "", dateTo: "" });
+                setFilters({ q: "", site: "All" });
                 setVerificationFilter("all");
               }}
               className="text-muted-foreground"
@@ -631,7 +605,7 @@ export function ManifestoView() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  setFilters({ q: "", site: "All", dateFrom: "", dateTo: "" });
+                  setFilters({ q: "", site: "All" });
                   setVerificationFilter("all");
                 }}
                 className="text-xs"
@@ -884,15 +858,18 @@ export function ManifestoView() {
         open={!!forwardDialog}
         onOpenChange={(o) => !o && setForwardDialog(null)}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Forward className="size-5 text-primary" /> Forward manifestos
+              <Forward className="size-5 text-primary" /> Forward manifesto
             </DialogTitle>
           </DialogHeader>
           {forwardDialog && (
             <ForwardForm
               ids={forwardDialog}
+              manifests={items.filter((m) => forwardDialog.includes(m.id))}
+              isLive={isLive}
+              isVerified={isVerified}
               busy={forwardBusy}
               onConfirm={doForward}
               onCancel={() => setForwardDialog(null)}
@@ -906,15 +883,31 @@ export function ManifestoView() {
 
 function ForwardForm({
   ids,
+  manifests,
+  isLive,
+  isVerified,
   busy,
   onConfirm,
   onCancel,
 }: {
   ids: string[];
+  manifests: FormalManifest[];
+  isLive: boolean;
+  isVerified: (m: FormalManifest) => boolean;
   busy: boolean;
   onConfirm: (ids: string[], recipients: string[], message: string) => void;
   onCancel: () => void;
 }) {
+  const [activeTab, setActiveTab] = useState<"messaging" | "agency">("messaging");
+  const [selectedId, setSelectedId] = useState<string>(ids[0] ?? "");
+  const currentManifest = manifests.find((m) => m.id === selectedId) || manifests[0];
+
+  // Messaging App state
+  const [sharing, setSharing] = useState(false);
+  const [copiedImg, setCopiedImg] = useState(false);
+  const [copiedText, setCopiedText] = useState(false);
+
+  // Agency Dispatch state
   const [selectedRecipients, setSelectedRecipients] = useState<Set<string>>(
     new Set(),
   );
@@ -929,7 +922,7 @@ function ForwardForm({
       return next;
     });
 
-  const confirm = () => {
+  const confirmAgency = () => {
     if (selectedRecipients.size === 0) {
       setError("Select at least one recipient.");
       return;
@@ -937,70 +930,415 @@ function ForwardForm({
     onConfirm(ids, [...selectedRecipients], message.trim());
   };
 
+  const getManifestBlob = async (m: FormalManifest): Promise<Blob> => {
+    let diverRows: any[] | null = null;
+    if (isLive && (m as any)._dbId) {
+      try {
+        diverRows = await fetchManifestDivers((m as any)._dbId);
+      } catch {
+        diverRows = null;
+      }
+    }
+    return await generateManifestoImageBlob({
+      id: m.id,
+      operator: m.operator || "Mabini Dive Operator",
+      site: m.site || m.location || "Mabini Marine Sanctuary",
+      date: m.date || m.dive_date || new Date().toISOString().slice(0, 10),
+      divers: Number(m.divers ?? m.diver_count) || 0,
+      verified: isVerified(m),
+      boatName: (m as any).boatName || (m as any).boat_name,
+      diveMode: (m as any).diveMode || (m as any).dive_mode,
+      diveType: (m as any).diveType || (m as any).dive_type,
+      difficulty: (m as any).difficulty,
+      maxDivers: (m as any).maxDivers || (m as any).max_divers,
+      captainName: (m as any).captainName || (m as any).captain_name,
+      instructorName: (m as any).instructorName || (m as any).instructor_name,
+      crewMembers: (m as any).crewMembers || (m as any).crew_members,
+      diveMasters: (m as any).diveMasters || (m as any).dive_masters,
+      roster: diverRows,
+    });
+  };
+
+  const copyImageToClipboard = async (blob: Blob) => {
+    if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write) {
+      const item = new ClipboardItem({ "image/png": blob });
+      await navigator.clipboard.write([item]);
+    } else {
+      throw new Error("Direct image writing to clipboard is not supported in this browser.");
+    }
+  };
+
+  const handleCopyAndOpenMessenger = async () => {
+    if (!currentManifest) return;
+    setSharing(true);
+    const tId = toast.loading("Generating manifesto photo for Messenger…");
+    try {
+      const blob = await getManifestBlob(currentManifest);
+      await copyImageToClipboard(blob);
+      setCopiedImg(true);
+      setTimeout(() => setCopiedImg(false), 3000);
+      window.open("https://www.messenger.com", "_blank");
+      toast.success("Manifesto photo copied! Opened Messenger.", {
+        id: tId,
+        description: "Press Ctrl+V in your Messenger chat to paste and send the photo.",
+        duration: 7000,
+      });
+      pushAuditLog(`Copied manifesto ${currentManifest.id} photo and opened Messenger`);
+    } catch (err: any) {
+      // Fallback: download image and open Messenger
+      toast.info("Browser restricted direct clipboard write. Downloading photo instead…", {
+        id: tId,
+      });
+      await downloadManifestoImage({
+        id: currentManifest.id,
+        operator: currentManifest.operator || "Mabini Dive Operator",
+        site: currentManifest.site || currentManifest.location || "Mabini Marine Sanctuary",
+        date: currentManifest.date || currentManifest.dive_date || new Date().toISOString().slice(0, 10),
+        divers: Number(currentManifest.divers ?? currentManifest.diver_count) || 0,
+        verified: isVerified(currentManifest),
+      });
+      window.open("https://www.messenger.com", "_blank");
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const handleShareNative = async () => {
+    if (!currentManifest) return;
+    setSharing(true);
+    const tId = toast.loading("Preparing manifesto photo for messaging apps…");
+    try {
+      const blob = await getManifestBlob(currentManifest);
+      const file = new File(
+        [blob],
+        `Sinsay-Manifesto-${currentManifest.id}-${currentManifest.date}.png`,
+        { type: "image/png" },
+      );
+
+      if (
+        typeof navigator !== "undefined" &&
+        navigator.canShare &&
+        navigator.canShare({ files: [file] })
+      ) {
+        await navigator.share({
+          title: `Dive Manifesto ${currentManifest.id}`,
+          text: `Dive Manifesto: ${currentManifest.operator} at ${currentManifest.site} (${currentManifest.date}) - ${currentManifest.divers} Divers`,
+          files: [file],
+        });
+        toast.success("Manifesto shared successfully", { id: tId });
+        pushAuditLog(`Shared manifesto ${currentManifest.id} photo to messaging apps`);
+      } else {
+        // Fallback to clipboard copy + open Messenger
+        await copyImageToClipboard(blob);
+        setCopiedImg(true);
+        setTimeout(() => setCopiedImg(false), 3000);
+        window.open("https://www.messenger.com", "_blank");
+        toast.success("Manifesto photo copied to clipboard! Opened Messenger.", {
+          id: tId,
+          description: "Press Ctrl+V in your chat to send the photo.",
+          duration: 7000,
+        });
+        pushAuditLog(`Copied manifesto ${currentManifest.id} photo for Messenger`);
+      }
+    } catch (err: any) {
+      if (err?.name !== "AbortError") {
+        toast.error("Sharing failed", {
+          id: tId,
+          description: dbErrorMessage(err),
+        });
+      } else {
+        toast.dismiss(tId);
+      }
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const handleCopyImageOnly = async () => {
+    if (!currentManifest) return;
+    setSharing(true);
+    const tId = toast.loading("Copying manifesto photo to clipboard…");
+    try {
+      const blob = await getManifestBlob(currentManifest);
+      await copyImageToClipboard(blob);
+      setCopiedImg(true);
+      setTimeout(() => setCopiedImg(false), 3000);
+      toast.success("Manifesto Photo Copied!", {
+        id: tId,
+        description: "You can now paste (Ctrl+V) the photo into Messenger, Viber, WhatsApp, or Telegram.",
+      });
+      pushAuditLog(`Copied manifesto ${currentManifest.id} photo to clipboard`);
+    } catch (err) {
+      toast.error("Clipboard copy failed", {
+        id: tId,
+        description: "Could not write image to clipboard. Try downloading the photo instead.",
+      });
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const handleDownloadPhoto = async () => {
+    if (!currentManifest) return;
+    setSharing(true);
+    try {
+      await downloadManifestoImage({
+        id: currentManifest.id,
+        operator: currentManifest.operator || "Mabini Dive Operator",
+        site: currentManifest.site || currentManifest.location || "Mabini Marine Sanctuary",
+        date: currentManifest.date || currentManifest.dive_date || new Date().toISOString().slice(0, 10),
+        divers: Number(currentManifest.divers ?? currentManifest.diver_count) || 0,
+        verified: isVerified(currentManifest),
+        boatName: (currentManifest as any).boatName || (currentManifest as any).boat_name,
+        diveType: (currentManifest as any).diveType || (currentManifest as any).dive_type,
+        maxDivers: (currentManifest as any).maxDivers || (currentManifest as any).max_divers,
+        captainName: (currentManifest as any).captainName || (currentManifest as any).captain_name,
+        instructorName: (currentManifest as any).instructorName || (currentManifest as any).instructor_name,
+      });
+      toast.success("Manifesto Photo Downloaded");
+      pushAuditLog(`Downloaded manifesto ${currentManifest.id} photo`);
+    } catch (err) {
+      toast.error("Download failed", { description: dbErrorMessage(err) });
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const handleCopyText = async () => {
+    if (!currentManifest) return;
+    const text = `SINSAY MABINI DIVE MANIFESTO\nManifesto ID: ${currentManifest.id}\nOperator: ${currentManifest.operator}\nDive Site: ${currentManifest.site}\nDate: ${currentManifest.date}\nDivers: ${currentManifest.divers}\nStatus: ${isVerified(currentManifest) ? "Official Verified" : "Pending Verification"}`;
+    await navigator.clipboard.writeText(text);
+    setCopiedText(true);
+    setTimeout(() => setCopiedText(false), 2500);
+    toast.success("Manifesto details copied to clipboard!");
+  };
+
   return (
-    <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        Forward{" "}
-        <span className="font-medium text-foreground">
-          {ids.length} manifesto{ids.length > 1 ? "s" : ""}
-        </span>{" "}
-        to selected recipients.
-      </p>
-      <div className="max-h-52 overflow-y-auto rounded-lg border border-border/70 divide-y divide-border/60">
-        {FORWARD_RECIPIENTS.map((r) => {
-          const checked = selectedRecipients.has(r.email);
-          return (
-            <label
-              key={r.email}
-              className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-primary-soft/40 transition-colors"
-            >
-              <Checkbox
-                checked={checked}
-                onCheckedChange={() => toggleRecipient(r.email)}
-              />
-              <div className="min-w-0">
-                <div className="text-sm font-medium truncate">{r.name}</div>
-                <div className="text-xs text-muted-foreground font-mono truncate">
-                  {r.email}
+    <div className="space-y-4 pt-1">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as any)}
+        className="w-full"
+      >
+        <TabsList className="grid grid-cols-2 w-full bg-secondary/80 p-1">
+          <TabsTrigger
+            value="messaging"
+            className="flex items-center gap-1.5 text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm"
+          >
+            <MessageCircle className="size-3.5 text-[#0084FF]" />
+            <span>Messaging Apps (Messenger)</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="agency"
+            className="flex items-center gap-1.5 text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm"
+          >
+            <Forward className="size-3.5 text-primary" />
+            <span>Agency Email Dispatch</span>
+          </TabsTrigger>
+        </TabsList>
+
+        {/* TAB 1: Messaging Apps */}
+        <TabsContent value="messaging" className="space-y-3 mt-3 focus-visible:outline-none">
+          {ids.length > 1 && (
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Select Manifesto to Forward</Label>
+              <div className="flex gap-1.5 overflow-x-auto pb-1">
+                {manifests.map((m) => (
+                  <button
+                    key={m.id}
+                    onClick={() => setSelectedId(m.id)}
+                    className={`px-2.5 py-1 text-xs rounded-lg border transition-all ${
+                      selectedId === m.id
+                        ? "bg-primary text-primary-foreground border-primary font-medium shadow-sm"
+                        : "bg-background border-border hover:bg-secondary text-muted-foreground"
+                    }`}
+                  >
+                    {m.id}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {currentManifest ? (
+            <div className="rounded-xl border border-border/70 bg-gradient-to-br from-primary-soft/30 via-background to-secondary/30 p-3.5 space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-xs font-bold text-primary">
+                      {currentManifest.id}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] px-1.5 py-0 border ${
+                        isVerified(currentManifest)
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                          : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                      }`}
+                    >
+                      {isVerified(currentManifest) ? "Verified" : "Pending"}
+                    </Badge>
+                  </div>
+                  <h4 className="text-sm font-semibold text-foreground truncate">
+                    {currentManifest.operator}
+                  </h4>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {currentManifest.site} &bull; {currentManifest.date} &bull;{" "}
+                    {currentManifest.divers} Divers
+                  </p>
+                </div>
+                <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                  <ImageIcon className="size-5" />
                 </div>
               </div>
-            </label>
-          );
-        })}
-      </div>
-      {error && (
-        <p className="text-xs text-destructive flex items-center gap-1">
-          <AlertCircle className="size-3" />
-          {error}
-        </p>
-      )}
-      <div className="space-y-1.5">
-        <Label>Optional note</Label>
-        <Textarea
-          rows={2}
-          placeholder="Add a message for the recipient…"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-        />
-      </div>
-      <DialogFooter>
-        <Button variant="outline" onClick={onCancel} disabled={busy}>
-          Cancel
-        </Button>
-        <Button
-          className="gradient-primary text-primary-foreground"
-          onClick={confirm}
-          disabled={busy}
-        >
-          {busy ? (
-            <Loader2 className="size-4 mr-1.5 animate-spin" />
+
+              {/* Main Action: Messenger One-Click */}
+              <div className="space-y-2 pt-1">
+                <Button
+                  className="w-full bg-gradient-to-r from-[#0084FF] to-[#00C6FF] hover:from-[#0074E0] hover:to-[#00B4EB] text-white font-medium shadow-sm"
+                  onClick={handleCopyAndOpenMessenger}
+                  disabled={sharing}
+                >
+                  {sharing ? (
+                    <Loader2 className="size-4 mr-2 animate-spin" />
+                  ) : (
+                    <MessageCircle className="size-4 mr-2" />
+                  )}
+                  Copy Photo & Open Messenger
+                </Button>
+
+                {/* Native OS Share Target */}
+                <Button
+                  variant="outline"
+                  className="w-full border-primary/30 text-primary hover:bg-primary-soft"
+                  onClick={handleShareNative}
+                  disabled={sharing}
+                >
+                  <Share2 className="size-4 mr-2" />
+                  Share to Messaging Apps (Native Share)
+                </Button>
+              </div>
+
+              {/* Quick actions: Copy / Download / Text */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={handleCopyImageOnly}
+                  disabled={sharing}
+                >
+                  {copiedImg ? (
+                    <Check className="size-3.5 mr-1 text-emerald-500" />
+                  ) : (
+                    <Copy className="size-3.5 mr-1" />
+                  )}
+                  {copiedImg ? "Photo Copied!" : "Copy Photo"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={handleDownloadPhoto}
+                  disabled={sharing}
+                >
+                  <Download className="size-3.5 mr-1" />
+                  Download Photo
+                </Button>
+              </div>
+
+              <div className="pt-0.5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full h-7 text-[11px] text-muted-foreground hover:text-foreground"
+                  onClick={handleCopyText}
+                >
+                  {copiedText ? (
+                    <Check className="size-3 mr-1 text-emerald-500" />
+                  ) : (
+                    <ScrollText className="size-3 mr-1" />
+                  )}
+                  {copiedText ? "Details Copied!" : "Copy details as text"}
+                </Button>
+              </div>
+            </div>
           ) : (
-            <Forward className="size-4 mr-1.5" />
+            <p className="text-xs text-muted-foreground py-4 text-center">
+              No manifesto selected.
+            </p>
           )}
-          Forward to {selectedRecipients.size || ""} recipient
-          {selectedRecipients.size !== 1 ? "s" : ""}
-        </Button>
-      </DialogFooter>
+
+          <DialogFooter className="pt-2">
+            <Button variant="outline" onClick={onCancel} className="w-full sm:w-auto">
+              Close
+            </Button>
+          </DialogFooter>
+        </TabsContent>
+
+        {/* TAB 2: Official Agency Dispatch */}
+        <TabsContent value="agency" className="space-y-3 mt-3 focus-visible:outline-none">
+          <p className="text-xs text-muted-foreground">
+            Dispatch official manifestos via government email to accredited agencies.
+          </p>
+          <div className="max-h-52 overflow-y-auto rounded-lg border border-border/70 divide-y divide-border/60">
+            {FORWARD_RECIPIENTS.map((r) => {
+              const checked = selectedRecipients.has(r.email);
+              return (
+                <label
+                  key={r.email}
+                  className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-primary-soft/40 transition-colors"
+                >
+                  <Checkbox
+                    checked={checked}
+                    onCheckedChange={() => toggleRecipient(r.email)}
+                  />
+                  <div className="min-w-0">
+                    <div className="text-xs font-medium truncate">{r.name}</div>
+                    <div className="text-[11px] text-muted-foreground font-mono truncate">
+                      {r.email}
+                    </div>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+          {error && (
+            <p className="text-xs text-destructive flex items-center gap-1">
+              <AlertCircle className="size-3" />
+              {error}
+            </p>
+          )}
+          <div className="space-y-1.5">
+            <Label className="text-xs">Optional dispatch note</Label>
+            <Textarea
+              rows={2}
+              placeholder="Add official dispatch message for the agency…"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              className="text-xs"
+            />
+          </div>
+          <DialogFooter className="pt-2">
+            <Button variant="outline" onClick={onCancel} disabled={busy}>
+              Cancel
+            </Button>
+            <Button
+              className="gradient-primary text-primary-foreground"
+              onClick={confirmAgency}
+              disabled={busy}
+            >
+              {busy ? (
+                <Loader2 className="size-4 mr-1.5 animate-spin" />
+              ) : (
+                <Forward className="size-4 mr-1.5" />
+              )}
+              Forward to {selectedRecipients.size || ""} recipient
+              {selectedRecipients.size !== 1 ? "s" : ""}
+            </Button>
+          </DialogFooter>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

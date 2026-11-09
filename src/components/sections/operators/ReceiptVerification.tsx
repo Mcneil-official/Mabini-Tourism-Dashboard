@@ -10,7 +10,6 @@ import {
   SlidersHorizontal,
   Eye,
   EyeOff,
-  CalendarIcon,
   Send,
   FileDown,
   X,
@@ -74,7 +73,6 @@ import {
 import { useFilters } from "@/hooks/useFilters";
 import { usePermission } from "@/hooks/usePermission";
 import { useGlobalDateRange } from "@/hooks/useGlobalDateRange";
-import { todayInManila, clampDateToToday } from "@/lib/period";
 import { pushAuditLog } from "@/lib/audit";
 import { requireLiveSession } from "@/lib/staff-auth";
 import {
@@ -84,6 +82,7 @@ import {
   useLiveList,
   decideReceipt,
   getReceiptUrl,
+  formatPeso,
   dbErrorMessage,
 } from "@/lib/queries";
 import {
@@ -164,8 +163,6 @@ export function ReceiptVerification() {
         )
           return false;
       }
-      if (search.dateFrom && r.date < search.dateFrom) return false;
-      if (search.dateTo && r.date > search.dateTo) return false;
       if (!inRange(r.date)) return false;
       return true;
     });
@@ -173,8 +170,6 @@ export function ReceiptVerification() {
     items,
     search.q,
     search.status,
-    search.dateFrom,
-    search.dateTo,
     inRange,
   ]);
 
@@ -225,16 +220,10 @@ export function ReceiptVerification() {
     activeFilters.push({ key: "status", label: `Status: ${search.status}` });
   if (search.q)
     activeFilters.push({ key: "q", label: `Search: "${search.q}"` });
-  if (search.dateFrom)
-    activeFilters.push({ key: "dateFrom", label: `From: ${search.dateFrom}` });
-  if (search.dateTo)
-    activeFilters.push({ key: "dateTo", label: `To: ${search.dateTo}` });
 
   const handleRemoveFilter = (key: string) => {
     if (key === "q") setFilters({ q: "" });
     else if (key === "status") setFilters({ status: "All" });
-    else if (key === "dateFrom") setFilters({ dateFrom: "" });
-    else if (key === "dateTo") setFilters({ dateTo: "" });
   };
 
   const decide = async (
@@ -485,35 +474,6 @@ export function ReceiptVerification() {
               ))}
             </SelectContent>
           </Select>
-          <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground whitespace-nowrap">
-              From
-            </Label>
-            <Input
-              type="date"
-              max={search.dateTo || todayInManila()}
-              value={search.dateFrom}
-              onChange={(e) =>
-                setFilters({ dateFrom: clampDateToToday(e.target.value) })
-              }
-              className="w-40"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground whitespace-nowrap">
-              To
-            </Label>
-            <Input
-              type="date"
-              min={search.dateFrom || undefined}
-              max={todayInManila()}
-              value={search.dateTo}
-              onChange={(e) =>
-                setFilters({ dateTo: clampDateToToday(e.target.value) })
-              }
-              className="w-40"
-            />
-          </div>
           <PassPricingEditor />
           {activeFilters.length > 0 && (
             <Button
@@ -669,28 +629,41 @@ export function ReceiptVerification() {
                   </button>
                 </div>
                 <div className="p-4 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2 min-w-0">
                       <Checkbox
                         checked={selected.has(r.id)}
                         onCheckedChange={() => toggleSelect(r.id)}
                         disabled={r.status !== "Pending"}
                         aria-label={`Select receipt ${r.id}`}
+                        className="mt-0.5"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setViewing(r)}
-                        title="View receipt details"
-                        className="font-medium truncate text-left hover:text-primary hover:underline underline-offset-2 transition-colors"
-                      >
-                        {r.operator}
-                      </button>
+                      <div className="min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => setViewing(r)}
+                          title="View dive pass & receipt details"
+                          className="font-medium truncate text-left block hover:text-primary hover:underline underline-offset-2 transition-colors max-w-[170px] sm:max-w-[210px]"
+                        >
+                          {r.operator}
+                        </button>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                            {r.passLabel || "Dive Pass"}
+                          </Badge>
+                        </div>
+                      </div>
                     </div>
-                    <div className="font-display font-bold">{r.amount}</div>
+                    <div className="text-right shrink-0">
+                      <div className="font-display font-bold leading-tight">{r.amount}</div>
+                      <div className="text-[11px] font-semibold text-primary">
+                        {r.passCount ?? 1} {(r.passCount ?? 1) === 1 ? "pass" : "passes"}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="font-mono">Ref: {r.ref}</span>
-                    <span>{r.date}</span>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+                    <span className="font-mono truncate">Ref: {r.ref}</span>
+                    <span className="shrink-0">{r.date}</span>
                   </div>
                   <div className="flex gap-2 pt-2">
                     {settled ? (
@@ -752,7 +725,7 @@ export function ReceiptVerification() {
       <Dialog open={!!viewing} onOpenChange={(o) => !o && setViewing(null)}>
         <DialogContent className="w-[min(92vw,24rem)] sm:w-[min(92vw,28rem)] max-w-none max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Receipt {viewing?.id}</DialogTitle>
+            <DialogTitle>Dive Pass Details — Receipt {viewing?.id}</DialogTitle>
           </DialogHeader>
           {viewing && (
             <div className="space-y-4">
@@ -792,7 +765,28 @@ export function ReceiptVerification() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <Field label="Operator" value={viewing.operator} />
                 <Field label="Reference #" value={viewing.ref} />
-                <Field label="Amount" value={viewing.amount} />
+                <Field label="Pass Package" value={viewing.passLabel || "Dive Pass"} />
+                <Field
+                  label="Passes Bought"
+                  value={
+                    <span className="font-semibold text-primary">
+                      {viewing.passCount ?? 1} {(viewing.passCount ?? 1) === 1 ? "pass" : "passes"}
+                    </span>
+                  }
+                />
+                <Field
+                  label="Total Amount"
+                  value={<span className="font-bold text-foreground">{viewing.amount}</span>}
+                />
+                <Field
+                  label="Price Per Pass"
+                  value={
+                    viewing.amountNum && (viewing.passCount ?? 1) > 1
+                      ? `${formatPeso(Math.round(viewing.amountNum / (viewing.passCount || 1)))} / pass`
+                      : viewing.amount
+                  }
+                />
+                <Field label="Status" value={<StatusBadge status={viewing.status} />} />
                 <Field label="Submitted" value={viewing.date} />
               </div>
             </div>

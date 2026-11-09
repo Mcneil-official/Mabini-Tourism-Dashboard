@@ -24,6 +24,7 @@ import {
 import {
   useLiveMode,
   useInventoryLive,
+  useTouristsLive,
   usePassPricingLive,
   useInvalidateLive,
   updatePassPrice,
@@ -281,31 +282,55 @@ function PricingDialog({
 }
 
 export function DivePassPage() {
-  // Live inventory (React Query cache — no extra fetch). Definitions from
-  // the columns that exist: Total = Σ total_passes, Active (in use) =
-  // Σ (total − remaining). "Expiring Soon" has no expiry source anywhere
-  // (dive_pass_inventory carries no dates) — stays mock until the
-  // annual_pass_holders probe resolves it.
   const isLive = useLiveMode();
   const liveInventory = useInventoryLive();
+  const liveTourists = useTouristsLive();
+
   const inv = liveInventory.data;
-  const isLiveData = isLive && !!inv;
-  const totalPasses = inv ? inv.reduce((a, r) => a + r.totalPasses, 0) : 0;
+  const tourists = liveTourists.data;
+  const isPending = isLive && (liveInventory.isPending || liveTourists.isPending);
+  const isLiveData = isLive && (!!inv || !!tourists);
+
+  // Total passes: prioritize allocated inventory packages, fallback to tourist dive passes
+  const invTotal = inv ? inv.reduce((a, r) => a + r.totalPasses, 0) : 0;
+  const touristPassesTotal = tourists
+    ? tourists.filter((t) => t.dive_pass_type || t.status === "Active").length
+    : 0;
+  const totalPasses = invTotal > 0 ? invTotal : touristPassesTotal;
+
+  // Active passes: consumed inventory, or active diver passes in the municipality
   const inUse = inv
     ? inv.reduce((a, r) => a + (r.totalPasses - r.remainingPasses), 0)
     : 0;
-  const buckets = inv
+  const activeTourists = tourists
+    ? tourists.filter((t) => t.status === "Active").length
+    : 0;
+  const activePasses = inUse > 0 ? inUse : activeTourists;
+
+  // Monthly deltas
+  const cur = new Date().getMonth();
+  const prev = (cur + 11) % 12;
+
+  const invBuckets = inv
     ? bucketByMonth(
         inv,
         (r) => r.createdAt,
         (r) => r.totalPasses,
       )
     : [];
-  const cur = new Date().getMonth();
-  const prev = (cur + 11) % 12;
-  const totalDiff = buckets.length
-    ? buckets[cur].total - buckets[prev].total
-    : 0;
+  const touristBuckets = tourists
+    ? bucketByMonth(
+        tourists,
+        (t) => t.dateAccredited || t.createdAt,
+        () => 1,
+      )
+    : [];
+  const totalDiff = invTotal > 0 && invBuckets.length
+    ? invBuckets[cur].total - invBuckets[prev].total
+    : touristBuckets.length
+      ? touristBuckets[cur].total - touristBuckets[prev].total
+      : 0;
+
   const useBuckets = inv
     ? bucketByMonth(
         inv,
@@ -313,8 +338,31 @@ export function DivePassPage() {
         (r) => r.totalPasses - r.remainingPasses,
       )
     : [];
-  const useDiff = useBuckets.length
+  const activeTouristBuckets = tourists
+    ? bucketByMonth(
+        tourists.filter((t) => t.status === "Active"),
+        (t) => t.dateAccredited || t.createdAt,
+        () => 1,
+      )
+    : [];
+  const useDiff = inUse > 0 && useBuckets.length
     ? useBuckets[cur].total - useBuckets[prev].total
+    : activeTouristBuckets.length
+      ? activeTouristBuckets[cur].total - activeTouristBuckets[prev].total
+      : 0;
+
+  // Expiring passes (within 30 days)
+  const now = new Date();
+  const in30d = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const expiringCount = tourists
+    ? tourists.filter((t) => {
+        if (t.status !== "Active" || !t.expires || t.expires === "—") return false;
+        const exp = new Date(
+          t.expires.length <= 10 ? t.expires + "T00:00:00" : t.expires,
+        );
+        if (Number.isNaN(exp.getTime())) return false;
+        return exp > now && exp <= in30d;
+      }).length
     : 0;
 
   return (
@@ -325,14 +373,14 @@ export function DivePassPage() {
             icon={CreditCard}
             label="Total Passes"
             value={
-              isLive && liveInventory.isPending
+              isPending
                 ? "—"
                 : isLiveData
                   ? String(totalPasses)
                   : "25"
             }
             delta={
-              isLive && liveInventory.isPending
+              isPending
                 ? ""
                 : isLiveData
                   ? `${totalDiff >= 0 ? "+" : ""}${totalDiff}`
@@ -344,14 +392,14 @@ export function DivePassPage() {
             icon={CheckCircle2}
             label="Active Passes"
             value={
-              isLive && liveInventory.isPending
+              isPending
                 ? "—"
                 : isLiveData
-                  ? String(inUse)
+                  ? String(activePasses)
                   : "17"
             }
             delta={
-              isLive && liveInventory.isPending
+              isPending
                 ? ""
                 : isLiveData
                   ? `${useDiff >= 0 ? "+" : ""}${useDiff}`
@@ -362,9 +410,24 @@ export function DivePassPage() {
           <StatCard
             icon={Clock}
             label="Expiring Soon"
-            value={isLive ? "—" : "4"}
-            delta={isLive ? "" : "-1"}
-            up={false}
+            value={
+              isPending
+                ? "—"
+                : isLiveData
+                  ? String(expiringCount)
+                  : "4"
+            }
+            delta={
+              isPending
+                ? ""
+                : isLiveData
+                  ? expiringCount > 0
+                    ? `${expiringCount}`
+                    : "0"
+                  : "-1"
+            }
+            deltaLabel={isLiveData ? "within 30 days" : "vs previous period"}
+            up={expiringCount === 0}
           />
         </div>
       </Reveal>
