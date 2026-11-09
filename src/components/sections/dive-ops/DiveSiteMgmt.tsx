@@ -21,6 +21,17 @@ import {
   X,
   Search,
   ChevronRight,
+  Compass,
+  Gauge,
+  ArrowDownUp,
+  Activity,
+  FileText,
+  Layers,
+  Globe,
+  Info,
+  Anchor,
+  Fish,
+  Copy,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -903,119 +914,279 @@ export function DiveSiteMgmt() {
 
         {/* Detail Dialog */}
         <Dialog open={!!viewing} onOpenChange={(o) => !o && setViewing(null)}>
-          <DialogContent className="w-[min(92vw,36rem)] max-w-none max-h-[90dvh] overflow-y-auto overflow-x-hidden">
-            <DialogHeader>
-              <DialogTitle>Dive Site Details</DialogTitle>
-            </DialogHeader>
+          <DialogContent className="w-[min(94vw,40rem)] max-w-none max-h-[92dvh] overflow-y-auto overflow-x-hidden p-0 gap-0 rounded-2xl border bg-card text-card-foreground shadow-2xl">
             {viewing && (
-              <div className="space-y-5">
-                {viewing.photo || viewing.photoPath ? (
-                  <div className="w-full aspect-video max-h-[30dvh] rounded-xl overflow-hidden bg-secondary">
+              <div className="flex flex-col">
+                {/* Hero Header with Media & Overlaid Badges */}
+                <div className="relative w-full h-52 sm:h-60 bg-muted overflow-hidden select-none">
+                  {viewing.photo || viewing.photoPath ? (
                     <SitePhoto
                       photo={viewing.photo}
                       photoPath={viewing.photoPath}
                       alt={viewing.name}
                       className="w-full h-full object-cover"
                     />
-                  </div>
-                ) : (
-                  <div className="w-full aspect-video max-h-[30dvh] rounded-xl gradient-primary relative overflow-hidden flex items-center justify-center">
-                    <div
-                      className="absolute inset-0 opacity-25"
-                      style={{
-                        backgroundImage:
-                          "radial-gradient(circle at 30% 30%, oklch(1 0 0 / 0.6), transparent 50%)",
-                      }}
-                    />
-                    <MapPin className="size-16 text-primary-foreground/40" />
-                  </div>
-                )}
-                <div className="flex flex-wrap items-center gap-4">
-                  <div className="size-14 rounded-xl gradient-primary flex items-center justify-center text-primary-foreground shrink-0">
-                    <MapPin className="size-7" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-display text-lg font-semibold truncate">
-                      {viewing.name}
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-sky-600/30 via-primary/30 to-indigo-700/30 flex items-center justify-center relative">
+                      <div
+                        className="absolute inset-0 opacity-20"
+                        style={{
+                          backgroundImage:
+                            "radial-gradient(circle at 30% 30%, oklch(1 0 0 / 0.6), transparent 60%)",
+                        }}
+                      />
+                      <Waves className="size-20 text-primary/30" />
                     </div>
-                    <div className="text-xs text-muted-foreground font-mono truncate">
+                  )}
+
+                  {/* Gradient Scrim for Text Readability */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/20" />
+
+                  {/* Floating Badges (Top Row) */}
+                  <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 z-10">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-black/60 text-white backdrop-blur-md border border-white/20 shadow-sm">
+                      <Anchor className="size-3 text-sky-400" />
                       {viewing.id}
+                    </span>
+
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md border shadow-sm ${
+                        viewing.status === "Active"
+                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-400/40"
+                          : viewing.status === "Seasonal"
+                            ? "bg-amber-500/20 text-amber-300 border-amber-400/40"
+                            : "bg-rose-500/20 text-rose-300 border-rose-400/40"
+                      }`}
+                    >
+                      <span
+                        className={`size-2 rounded-full ${
+                          viewing.status === "Active"
+                            ? "bg-emerald-400 animate-pulse"
+                            : viewing.status === "Seasonal"
+                              ? "bg-amber-400"
+                              : "bg-rose-400"
+                        }`}
+                      />
+                      {viewing.status}
+                    </span>
+                  </div>
+
+                  {/* Hero Bottom Info (Title, Location & Difficulty Pill) */}
+                  <div className="absolute bottom-3 left-3 right-3 flex flex-wrap items-end justify-between gap-2 z-10">
+                    <div>
+                      <h3 className="font-display text-xl sm:text-2xl font-bold text-white tracking-tight drop-shadow-md">
+                        {viewing.name}
+                      </h3>
+                      <div className="flex items-center gap-1 text-xs text-white/90 drop-shadow mt-0.5">
+                        <MapPin className="size-3.5 text-sky-400 shrink-0" />
+                        <span>Brgy. {viewing.barangay}, Mabini, Batangas</span>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-white backdrop-blur-md shadow-sm border border-white/20 ${
+                          String(viewing.difficulty).toLowerCase().includes("easy")
+                            ? "bg-emerald-600/80"
+                            : String(viewing.difficulty).toLowerCase().includes("adv")
+                              ? "bg-rose-600/80"
+                              : "bg-sky-600/80"
+                        }`}
+                      >
+                        <Gauge className="size-3 text-white/90" />
+                        {viewing.difficulty}
+                      </span>
                     </div>
                   </div>
-                  <Badge
-                    variant="outline"
-                    className={`shrink-0 ${
-                      viewing.status === "Active"
-                        ? "bg-success/10 text-success border-success/20"
-                        : viewing.status === "Seasonal"
-                          ? "bg-warning/15 text-warning-foreground border-warning/30"
-                          : "bg-muted text-muted-foreground border-border"
-                    }`}
-                  >
-                    {viewing.status}
-                  </Badge>
                 </div>
-                <p className="text-sm leading-relaxed text-muted-foreground break-words">
-                  {viewing.description}
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-sm">
-                  <Field label="Barangay" value={viewing.barangay} />
-                  <Field label="Depth Range" value={viewing.depth} />
-                  <Field label="Difficulty" value={viewing.difficulty} />
-                  <Field
-                    label="Type"
-                    value={
-                      viewing.types?.length
-                        ? viewing.types.join(", ")
-                        : viewing.type
-                    }
-                  />
-                  <Field label="Total Dives" value={String(viewing.dives)} />
-                  <Field
-                    label="Trend"
-                    value={
-                      siteTrend(viewing.name) ??
-                      `+${5 + Math.floor(Math.random() * 10)}%`
-                    }
-                  />
-                </div>
-                <div className="flex flex-col sm:flex-row gap-2 pt-2">
-                  <Button
-                    variant="outline"
-                    className="w-full sm:flex-1"
-                    onClick={() => {
-                      setViewing(null);
-                      openEdit(viewing);
-                    }}
-                  >
-                    <Edit3 className="size-4 mr-1.5" /> Edit
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full sm:flex-1"
-                    disabled={!!toggling[viewing.id]}
-                    onClick={() => {
-                      setViewing(null);
-                      toggleStatus(viewing.id);
-                    }}
-                  >
-                    {toggling[viewing.id] ? (
-                      <Loader2 className="size-4 mr-1.5 animate-spin" />
-                    ) : null}
-                    Toggle Status
-                  </Button>
-                  {canAdmin && (
+
+                {/* Body Content */}
+                <div className="p-4 sm:p-5 space-y-4">
+                  {/* GPS & Territorial Position Bar */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-secondary/50 border border-border/70 text-xs">
+                    <div className="flex items-center gap-2 text-foreground font-medium">
+                      <Globe className="size-4 text-primary shrink-0" />
+                      <span className="font-mono text-[11px] text-muted-foreground">
+                        {Number(viewing.lat).toFixed(4)}° N, {Number(viewing.lng).toFixed(4)}° E
+                      </span>
+                      <span className="text-muted-foreground/60">•</span>
+                      <span className="text-[11px] text-sky-600 dark:text-sky-400 font-semibold">
+                        Mabini Municipal Waters
+                      </span>
+                    </div>
+
                     <Button
-                      variant="outline"
-                      className="w-full sm:flex-1 border-destructive/30 text-destructive hover:bg-destructive/10"
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-[11px] gap-1 text-muted-foreground hover:text-foreground"
                       onClick={() => {
-                        setViewing(null);
-                        attemptDelete(viewing);
+                        const coords = `${viewing.lat}, ${viewing.lng}`;
+                        navigator.clipboard?.writeText(coords);
+                        toast.success("Coordinates copied to clipboard", { description: coords });
                       }}
                     >
-                      <Trash2 className="size-4 mr-1.5" /> Delete
+                      <Copy className="size-3" />
+                      Copy GPS
                     </Button>
-                  )}
+                  </div>
+
+                  {/* 4 Stat Highlights Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div className="p-3 rounded-xl bg-card border border-border/70 shadow-xs space-y-1">
+                      <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider flex items-center gap-1">
+                        <ArrowDownUp className="size-3 text-sky-500" />
+                        Depth Range
+                      </span>
+                      <div className="text-sm font-bold text-foreground">
+                        {viewing.depth}
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-card border border-border/70 shadow-xs space-y-1">
+                      <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider flex items-center gap-1">
+                        <Activity className="size-3 text-emerald-500" />
+                        Total Dives
+                      </span>
+                      <div className="text-sm font-bold text-foreground">
+                        {Number(viewing.dives).toLocaleString()} <span className="text-xs font-normal text-muted-foreground">logged</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-card border border-border/70 shadow-xs space-y-1">
+                      <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider flex items-center gap-1">
+                        <Gauge className="size-3 text-indigo-500" />
+                        Difficulty
+                      </span>
+                      <div className="text-sm font-bold text-foreground">
+                        {viewing.difficulty}
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-card border border-border/70 shadow-xs space-y-1">
+                      <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider flex items-center gap-1">
+                        <Sparkles className="size-3 text-amber-500" />
+                        Activity Trend
+                      </span>
+                      <div className="text-sm font-bold text-foreground text-emerald-600 dark:text-emerald-400">
+                        {siteTrend(viewing.name) ?? "+12%"}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Site Environment & Features Tags */}
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Layers className="size-3.5 text-primary" />
+                      Diving Environment &amp; Features
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {viewing.types?.length ? (
+                        viewing.types.map((t: string) => {
+                          const lower = t.toLowerCase();
+                          return (
+                            <span
+                              key={t}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-primary/10 text-primary border border-primary/20 shadow-2xs"
+                            >
+                              {lower.includes("wall") ? (
+                                <Layers className="size-3" />
+                              ) : lower.includes("reef") || lower.includes("coral") ? (
+                                <Fish className="size-3" />
+                              ) : lower.includes("wreck") ? (
+                                <Anchor className="size-3" />
+                              ) : lower.includes("drift") ? (
+                                <Waves className="size-3" />
+                              ) : lower.includes("muck") ? (
+                                <Search className="size-3" />
+                              ) : (
+                                <Compass className="size-3" />
+                              )}
+                              {t}
+                            </span>
+                          );
+                        })
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Standard Reef Dive</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Description Box */}
+                  <div className="rounded-xl border border-border/70 bg-secondary/30 p-3.5 space-y-1.5">
+                    <div className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <FileText className="size-3.5 text-primary" />
+                      Site Description &amp; Topography Highlights
+                    </div>
+                    {viewing.description ? (
+                      <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed break-words">
+                        {viewing.description}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">
+                        No description provided for this dive site yet. Click &quot;Edit Details&quot; below to add marine life sightings, depth profiles, and mooring details.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/60">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setViewing(null)}
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      Close
+                    </Button>
+
+                    <div className="flex items-center gap-2">
+                      {canAdmin && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="text-xs border-destructive/30 text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            setViewing(null);
+                            attemptDelete(viewing);
+                          }}
+                        >
+                          <Trash2 className="size-3.5 mr-1" /> Delete
+                        </Button>
+                      )}
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={!!toggling[viewing.id]}
+                        onClick={() => {
+                          setViewing(null);
+                          toggleStatus(viewing.id);
+                        }}
+                        className="text-xs font-medium"
+                      >
+                        {toggling[viewing.id] ? (
+                          <Loader2 className="size-3.5 mr-1 animate-spin" />
+                        ) : null}
+                        Toggle Status
+                      </Button>
+
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="gradient-primary text-primary-foreground text-xs font-semibold shadow-sm"
+                        onClick={() => {
+                          setViewing(null);
+                          openEdit(viewing);
+                        }}
+                      >
+                        <Edit3 className="size-3.5 mr-1.5" /> Edit Details
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -1030,18 +1201,14 @@ export function DiveSiteMgmt() {
             else setAddOpen(true);
           }}
         >
-          <DialogContent className="w-[min(92vw,36rem)] max-w-none max-h-[90dvh] overflow-y-auto overflow-x-hidden">
+          <DialogContent className="w-[min(94vw,42rem)] max-w-none max-h-[92dvh] overflow-y-auto overflow-x-hidden rounded-2xl border bg-card text-card-foreground shadow-2xl p-5 sm:p-6 space-y-5">
             <DialogHeader>
-              <DialogTitle>
-                {editTarget ? "Edit Dive Site" : "Add Dive Site"}
+              <DialogTitle className="text-xl font-bold">
+                {editTarget ? "Edit Dive Site Details" : "Register New Dive Site"}
               </DialogTitle>
-              <p className="text-sm text-muted-foreground">
-                {editTarget
-                  ? `Update details for ${editTarget.name} (${editTarget.id}).`
-                  : "Register a new dive site with its location and details."}
-              </p>
             </DialogHeader>
-            <div className="space-y-5">
+
+            <div className="space-y-4">
               <input
                 ref={fileRef}
                 type="file"
@@ -1049,315 +1216,389 @@ export function DiveSiteMgmt() {
                 className="hidden"
                 onChange={onPhotoPick}
               />
-              <div
-                className="relative rounded-xl border-2 border-dashed border-border hover:border-primary/50 transition-colors cursor-pointer overflow-hidden group max-h-[28dvh]"
-                onClick={() => fileRef.current?.click()}
-              >
-                {newSite.photo ? (
-                  <>
-                    <img
-                      src={newSite.photo}
-                      alt="Site photo"
-                      className="w-full aspect-video max-h-[28dvh] object-cover"
-                    />
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setNewSite((s) => ({ ...s, photo: "" }));
-                        setPhotoFile(null);
-                        if (fileRef.current) fileRef.current.value = "";
-                      }}
-                      className="absolute top-2 right-2 size-7 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <X className="size-4" />
-                    </button>
-                    <div className="absolute inset-0 bg-background/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                      <span className="text-sm font-medium text-foreground bg-background/80 rounded-lg px-3 py-1.5">
-                        Change photo
-                      </span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="w-full aspect-video max-h-[28dvh] flex flex-col items-center justify-center gap-1.5 text-muted-foreground">
-                    <ImageIcon className="size-8" />
-                    <span className="text-sm font-medium">
-                      Click to upload a photo
-                    </span>
-                    <span className="text-xs">JPG, PNG up to 5 MB</span>
-                  </div>
-                )}
-              </div>
-              {editTarget &&
-                !newSite.photo &&
-                !clearPhoto &&
-                (editTarget.photo || editTarget.photoPath) && (
-                  <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-secondary/40 px-3 py-2 min-w-0">
-                    <SitePhoto
-                      photo={editTarget.photo}
-                      photoPath={editTarget.photoPath}
-                      alt={editTarget.name}
-                      className="size-10 rounded-lg object-cover shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium truncate">
-                        Current photo
-                      </div>
-                      <div className="text-[11px] text-muted-foreground truncate">
-                        Upload above to replace
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive shrink-0"
-                      onClick={() => setClearPhoto(true)}
-                    >
-                      <X className="size-4 mr-1" /> Remove
-                    </Button>
-                  </div>
-                )}
-              {clearPhoto && (
-                <p className="text-xs text-muted-foreground">
-                  Current photo will be removed on save. Upload a new one to
-                  replace it instead.
-                </p>
-              )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div className="space-y-1.5">
-                  <Label>
-                    Site Name <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    value={newSite.name}
-                    onChange={(e) =>
-                      setNewSite({ ...newSite, name: e.target.value })
-                    }
-                    placeholder="e.g. Cathedral Point"
-                    className={
-                      siteErrors.name
-                        ? "border-destructive focus-visible:ring-destructive/30"
-                        : ""
-                    }
-                  />
-                  {siteErrors.name && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="size-3" />
-                      {siteErrors.name}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-1.5">
-                  <Label>
-                    Barangay <span className="text-destructive">*</span>
-                  </Label>
-                  <Select
-                    value={newSite.barangay}
-                    onValueChange={(v) =>
-                      setNewSite({ ...newSite, barangay: v })
-                    }
-                  >
-                    <SelectTrigger
-                      className={
-                        siteErrors.barangay
-                          ? "border-destructive focus-visible:ring-destructive/30"
-                          : ""
-                      }
-                    >
-                      <SelectValue placeholder="Select barangay" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SITE_BARANGAYS.map((b) => (
-                        <SelectItem key={b} value={b}>
-                          {b}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {siteErrors.barangay && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="size-3" />
-                      {siteErrors.barangay}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-1.5">
-                  <Label>
-                    Depth Range <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    value={newSite.depth}
-                    onChange={(e) =>
-                      setNewSite({ ...newSite, depth: e.target.value })
-                    }
-                    placeholder="e.g. 10–30 m"
-                    className={
-                      siteErrors.depth
-                        ? "border-destructive focus-visible:ring-destructive/30"
-                        : ""
-                    }
-                  />
-                  {siteErrors.depth && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="size-3" />
-                      {siteErrors.depth}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-1.5">
-                  <Label>
-                    Difficulty <span className="text-destructive">*</span>
-                  </Label>
-                  <Select
-                    value={newSite.difficulty}
-                    onValueChange={(v) =>
-                      setNewSite({ ...newSite, difficulty: v })
-                    }
-                  >
-                    <SelectTrigger
-                      className={
-                        siteErrors.difficulty
-                          ? "border-destructive focus-visible:ring-destructive/30"
-                          : ""
-                      }
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ALL_DIFFICULTIES.map((d) => (
-                        <SelectItem key={d} value={d}>
-                          {d}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {siteErrors.difficulty && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="size-3" />
-                      {siteErrors.difficulty}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-1.5 sm:col-span-2">
-                  <Label>
-                    Type <span className="text-destructive">*</span>
-                  </Label>
-                  <ToggleGroup
-                    type="multiple"
-                    variant="outline"
-                    value={newSite.types}
-                    onValueChange={(v) => setNewSite({ ...newSite, types: v })}
-                    className={`flex flex-wrap justify-start gap-2 ${
-                      siteErrors.type
-                        ? "rounded-lg ring-1 ring-destructive/40 p-1"
-                        : ""
-                    }`}
-                  >
-                    {ALL_SITE_TYPES.map((t) => (
-                      <ToggleGroupItem
-                        key={t}
-                        value={t}
-                        className="h-9 rounded-lg px-3"
+
+              {/* Photo Upload Dropzone Card */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <ImageIcon className="size-3.5 text-primary" />
+                  Site Photo &amp; Media Banner
+                </Label>
+
+                <div
+                  className="relative rounded-xl border-2 border-dashed border-border/80 hover:border-primary/60 transition-all cursor-pointer overflow-hidden group bg-secondary/20 hover:bg-secondary/40 max-h-52"
+                  onClick={() => fileRef.current?.click()}
+                >
+                  {newSite.photo ? (
+                    <>
+                      <img
+                        src={newSite.photo}
+                        alt="Site photo preview"
+                        className="w-full aspect-video max-h-52 object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setNewSite((s) => ({ ...s, photo: "" }));
+                          setPhotoFile(null);
+                          if (fileRef.current) fileRef.current.value = "";
+                        }}
+                        className="absolute top-2.5 right-2.5 size-8 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md flex items-center justify-center text-white transition-colors shadow-sm"
+                        title="Remove photo"
                       >
-                        {t}
-                      </ToggleGroupItem>
-                    ))}
-                  </ToggleGroup>
-                  <p className="text-xs text-muted-foreground">
-                    Select one or more.
+                        <X className="size-4" />
+                      </button>
+                      <div className="absolute inset-0 bg-black/40 backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                        <span className="text-xs font-semibold text-white bg-black/60 backdrop-blur-md rounded-lg px-3 py-1.5 flex items-center gap-1.5 shadow-sm border border-white/20">
+                          <ImagePlus className="size-3.5" /> Change Photo
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="w-full aspect-video max-h-48 flex flex-col items-center justify-center gap-2 p-6 text-center">
+                      <div className="size-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center transition-transform group-hover:scale-105">
+                        <ImagePlus className="size-6" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <span className="text-sm font-semibold text-foreground block">
+                          Click to upload site photo
+                        </span>
+                        <span className="text-xs text-muted-foreground block">
+                          PNG, JPG, WebP up to 5 MB • Landscape ratio recommended
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {editTarget &&
+                  !newSite.photo &&
+                  !clearPhoto &&
+                  (editTarget.photo || editTarget.photoPath) && (
+                    <div className="flex items-center gap-3 rounded-xl border border-border/70 bg-secondary/40 px-3.5 py-2.5 min-w-0">
+                      <SitePhoto
+                        photo={editTarget.photo}
+                        photoPath={editTarget.photoPath}
+                        alt={editTarget.name}
+                        className="size-11 rounded-lg object-cover shrink-0 border border-border/50"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-semibold text-foreground truncate">
+                          Current Stored Photo
+                        </div>
+                        <div className="text-[11px] text-muted-foreground truncate">
+                          Upload above to replace this image
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="text-xs text-destructive hover:bg-destructive/10 shrink-0 h-8"
+                        onClick={() => setClearPhoto(true)}
+                      >
+                        <Trash2 className="size-3.5 mr-1" /> Remove
+                      </Button>
+                    </div>
+                  )}
+
+                {clearPhoto && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                    <AlertCircle className="size-3.5 shrink-0" />
+                    Current photo will be cleared upon saving.
                   </p>
-                  {siteErrors.type && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="size-3" />
-                      {siteErrors.type}
-                    </p>
-                  )}
+                )}
+              </div>
+
+              {/* Section 1: Site Identity & Location */}
+              <div className="rounded-xl border border-border/70 bg-secondary/30 p-3.5 space-y-3">
+                <div className="text-xs font-semibold uppercase tracking-wider text-foreground flex items-center gap-1.5 border-b border-border/50 pb-2">
+                  <MapPin className="size-3.5 text-primary" />
+                  Site Identity &amp; Location
                 </div>
-                <div className="space-y-1.5">
-                  <Label>
-                    Latitude <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    value={newSite.lat}
-                    onChange={(e) =>
-                      setNewSite({ ...newSite, lat: e.target.value })
-                    }
-                    placeholder="e.g. 13.7620"
-                    inputMode="decimal"
-                    className={
-                      siteErrors.lat
-                        ? "border-destructive focus-visible:ring-destructive/30"
-                        : ""
-                    }
-                  />
-                  {siteErrors.lat && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="size-3" />
-                      {siteErrors.lat}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-1.5">
-                  <Label>
-                    Longitude <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    value={newSite.lng}
-                    onChange={(e) =>
-                      setNewSite({ ...newSite, lng: e.target.value })
-                    }
-                    placeholder="e.g. 120.9210"
-                    inputMode="decimal"
-                    className={
-                      siteErrors.lng
-                        ? "border-destructive focus-visible:ring-destructive/30"
-                        : ""
-                    }
-                  />
-                  {siteErrors.lng && (
-                    <p className="text-xs text-destructive flex items-center gap-1">
-                      <AlertCircle className="size-3" />
-                      {siteErrors.lng}
-                    </p>
-                  )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">
+                      Site Name <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      value={newSite.name}
+                      onChange={(e) =>
+                        setNewSite({ ...newSite, name: e.target.value })
+                      }
+                      placeholder="e.g. Cathedral Point"
+                      className={`h-9 text-xs ${
+                        siteErrors.name
+                          ? "border-destructive focus-visible:ring-destructive/30"
+                          : ""
+                      }`}
+                    />
+                    {siteErrors.name && (
+                      <p className="text-[11px] text-destructive flex items-center gap-1">
+                        <AlertCircle className="size-3" />
+                        {siteErrors.name}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">
+                      Barangay <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={newSite.barangay}
+                      onValueChange={(v) =>
+                        setNewSite({ ...newSite, barangay: v })
+                      }
+                    >
+                      <SelectTrigger
+                        className={`h-9 text-xs ${
+                          siteErrors.barangay
+                            ? "border-destructive focus-visible:ring-destructive/30"
+                            : ""
+                        }`}
+                      >
+                        <SelectValue placeholder="Select barangay" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SITE_BARANGAYS.map((b) => (
+                          <SelectItem key={b} value={b} className="text-xs">
+                            {b}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {siteErrors.barangay && (
+                      <p className="text-[11px] text-destructive flex items-center gap-1">
+                        <AlertCircle className="size-3" />
+                        {siteErrors.barangay}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
+
+              {/* Section 2: Dive Profile & Specifications */}
+              <div className="rounded-xl border border-border/70 bg-secondary/30 p-3.5 space-y-3">
+                <div className="text-xs font-semibold uppercase tracking-wider text-foreground flex items-center gap-1.5 border-b border-border/50 pb-2">
+                  <Compass className="size-3.5 text-primary" />
+                  Diving Profile &amp; Specifications
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">
+                      Depth Range <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      value={newSite.depth}
+                      onChange={(e) =>
+                        setNewSite({ ...newSite, depth: e.target.value })
+                      }
+                      placeholder="e.g. 10–30 m"
+                      className={`h-9 text-xs ${
+                        siteErrors.depth
+                          ? "border-destructive focus-visible:ring-destructive/30"
+                          : ""
+                      }`}
+                    />
+                    {siteErrors.depth && (
+                      <p className="text-[11px] text-destructive flex items-center gap-1">
+                        <AlertCircle className="size-3" />
+                        {siteErrors.depth}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">
+                      Difficulty Level <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={newSite.difficulty}
+                      onValueChange={(v) =>
+                        setNewSite({ ...newSite, difficulty: v })
+                      }
+                    >
+                      <SelectTrigger
+                        className={`h-9 text-xs ${
+                          siteErrors.difficulty
+                            ? "border-destructive focus-visible:ring-destructive/30"
+                            : ""
+                        }`}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ALL_DIFFICULTIES.map((d) => (
+                          <SelectItem key={d} value={d} className="text-xs">
+                            {d}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {siteErrors.difficulty && (
+                      <p className="text-[11px] text-destructive flex items-center gap-1">
+                        <AlertCircle className="size-3" />
+                        {siteErrors.difficulty}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-medium">
+                        Site Environment Types <span className="text-destructive">*</span>
+                      </Label>
+                      <span className="text-[11px] text-muted-foreground">Select one or more</span>
+                    </div>
+
+                    <ToggleGroup
+                      type="multiple"
+                      variant="outline"
+                      value={newSite.types}
+                      onValueChange={(v) => setNewSite({ ...newSite, types: v })}
+                      className={`flex flex-wrap justify-start gap-1.5 ${
+                        siteErrors.type
+                          ? "rounded-lg ring-1 ring-destructive/40 p-1"
+                          : ""
+                      }`}
+                    >
+                      {ALL_SITE_TYPES.map((t) => (
+                        <ToggleGroupItem
+                          key={t}
+                          value={t}
+                          className="h-8 rounded-lg px-2.5 text-xs data-[state=on]:bg-primary/10 data-[state=on]:text-primary data-[state=on]:border-primary/40 font-medium"
+                        >
+                          {t}
+                        </ToggleGroupItem>
+                      ))}
+                    </ToggleGroup>
+                    {siteErrors.type && (
+                      <p className="text-[11px] text-destructive flex items-center gap-1">
+                        <AlertCircle className="size-3" />
+                        {siteErrors.type}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 3: Geographic Coordinates */}
+              <div className="rounded-xl border border-border/70 bg-secondary/30 p-3.5 space-y-2.5">
+                <div className="flex items-center justify-between border-b border-border/50 pb-2">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                    <Globe className="size-3.5 text-primary" />
+                    Geographic Position (GPS)
+                  </div>
+                  <span className="text-[10px] text-muted-foreground font-mono">WGS84 Format</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">
+                      Latitude (°N) <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      value={newSite.lat}
+                      onChange={(e) =>
+                        setNewSite({ ...newSite, lat: e.target.value })
+                      }
+                      placeholder="e.g. 13.7620"
+                      inputMode="decimal"
+                      className={`h-9 text-xs font-mono ${
+                        siteErrors.lat
+                          ? "border-destructive focus-visible:ring-destructive/30"
+                          : ""
+                      }`}
+                    />
+                    {siteErrors.lat && (
+                      <p className="text-[11px] text-destructive flex items-center gap-1">
+                        <AlertCircle className="size-3" />
+                        {siteErrors.lat}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">
+                      Longitude (°E) <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      value={newSite.lng}
+                      onChange={(e) =>
+                        setNewSite({ ...newSite, lng: e.target.value })
+                      }
+                      placeholder="e.g. 120.9210"
+                      inputMode="decimal"
+                      className={`h-9 text-xs font-mono ${
+                        siteErrors.lng
+                          ? "border-destructive focus-visible:ring-destructive/30"
+                          : ""
+                      }`}
+                    />
+                    {siteErrors.lng && (
+                      <p className="text-[11px] text-destructive flex items-center gap-1">
+                        <AlertCircle className="size-3" />
+                        {siteErrors.lng}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 bg-background/50 px-2.5 py-1.5 rounded-lg border border-border/40">
+                  <Info className="size-3.5 text-sky-500 shrink-0" />
+                  Coordinates should be located within Mabini ocean territory (Lat: 13.67°–13.77° N, Lng: 120.82°–120.98° E).
+                </div>
+              </div>
+
+              {/* Section 4: Highlights & Marine Profile Description */}
               <div className="space-y-1.5">
-                <Label>Description</Label>
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <FileText className="size-3.5 text-primary" />
+                  Site Description &amp; Marine Highlights
+                </Label>
                 <Textarea
                   value={newSite.description}
                   onChange={(e) =>
                     setNewSite({ ...newSite, description: e.target.value })
                   }
-                  placeholder="Brief site description…"
+                  placeholder="Describe the site's underwater topography, marine biodiversity (nudibranchs, turtles, schools of fish), depth contours, and current conditions..."
                   rows={3}
-                  className="resize-y max-h-40"
+                  className="resize-y min-h-[5rem] max-h-40 text-xs leading-relaxed"
                 />
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={closeSiteDialog}>
+
+              {/* Footer Buttons */}
+              <DialogFooter className="pt-2 sm:pt-3 border-t border-border/60 flex items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={closeSiteDialog}
+                  className="text-xs h-9"
+                >
                   Cancel
                 </Button>
                 <Button
-                  className="gradient-primary text-primary-foreground"
+                  className="gradient-primary text-primary-foreground text-xs font-semibold h-9 shadow-sm"
                   disabled={adding}
                   onClick={editTarget ? saveEdit : addSite}
                 >
                   {adding ? (
-                    <Loader2 className="size-4 mr-1.5 animate-spin" />
+                    <Loader2 className="size-3.5 mr-1.5 animate-spin" />
                   ) : editTarget ? (
-                    <Check className="size-4 mr-1.5" />
+                    <Check className="size-3.5 mr-1.5" />
                   ) : (
-                    <Plus className="size-4 mr-1.5" />
+                    <Plus className="size-3.5 mr-1.5" />
                   )}
                   {adding
                     ? editTarget
-                      ? "Saving…"
-                      : "Adding…"
+                      ? "Saving Changes…"
+                      : "Adding Site…"
                     : editTarget
                       ? "Save Changes"
-                      : "Add Site"}
+                      : "Add Dive Site"}
                 </Button>
               </DialogFooter>
             </div>

@@ -4,6 +4,8 @@ import {
   ScrollText,
   Check,
   RotateCcw,
+  RotateCw,
+  ImageIcon,
   Download,
   Forward,
   Search,
@@ -16,7 +18,6 @@ import {
   EyeOff,
   CalendarIcon,
   Send,
-  FileDown,
   X,
   ChevronRight,
   ShieldCheck,
@@ -152,6 +153,21 @@ export function ManifestoView() {
     "all" | "verified" | "unverified"
   >("all");
 
+  const liveSitesQuery = useDiveSitesLive();
+  const sitePhotoMap = useMemo(() => {
+    const map = new Map<string, string>();
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://jmxhwcimqmtvgqtbhbch.supabase.co";
+    for (const s of liveSitesQuery.data ?? []) {
+      if (s.photoUrl) {
+        map.set(
+          s.name.toLowerCase().trim(),
+          `${supabaseUrl}/storage/v1/object/public/dive-site-photos/${s.photoUrl}`
+        );
+      }
+    }
+    return map;
+  }, [liveSitesQuery.data]);
+
   // Live mode reads verification from the row (032 verified flag); mock
   // mode keeps the local Set with the first 15 pre-verified.
   const isVerified = (m: { id: string; verified?: boolean }) =>
@@ -209,8 +225,7 @@ export function ManifestoView() {
       }
       if (search.dateFrom && m.date < search.dateFrom) return false;
       if (search.dateTo && m.date > search.dateTo) return false;
-      if (!inRange(m.date)) return false;
-      if (verificationFilter === "verified" && !isVerified(m)) return false;
+            if (verificationFilter === "verified" && !isVerified(m)) return false;
       if (verificationFilter === "unverified" && isVerified(m)) return false;
       return true;
     });
@@ -298,6 +313,49 @@ export function ManifestoView() {
     toast.success("Manifesto Generated", {
       description: `Official printable manifesto opened for ${m.id} (${m.site}).`,
     });
+  };
+
+
+  const downloadImageManifesto = async (m: any, customRoster?: any[]) => {
+    if (!canAct) return deny();
+    setRowBusy((b) => ({ ...b, [m.id]: "download" }));
+    const tId = toast.loading(`Generating official manifesto image for ${m.id}…`);
+    try {
+      let diverRows: any[] | null | undefined = customRoster;
+      if (!diverRows) {
+        try {
+          diverRows = isLive ? await fetchManifestDivers(m._dbId || m.id) : null;
+        } catch {
+          diverRows = null;
+        }
+      }
+      await downloadManifestoImage({
+        id: m.id,
+        operator: m.operator,
+        site: m.site,
+        date: m.date,
+        divers: m.divers,
+        verified: isVerified(m),
+        boatName: (m as any).boatName,
+        diveType: (m as any).diveType,
+        maxDivers: (m as any).maxDivers,
+        captainName: (m as any).captainName,
+        instructorName: (m as any).instructorName,
+        roster: diverRows,
+      });
+      toast.success("Manifesto Image Downloaded", {
+        id: tId,
+        description: `Saved Manifesto-${m.id}-${m.date}.png to your device.`,
+      });
+      pushAuditLog(`Downloaded manifesto image ${m.id}`);
+    } catch (err) {
+      toast.error("Download failed", {
+        id: tId,
+        description: dbErrorMessage(err),
+      });
+    } finally {
+      setRowBusy((b) => ({ ...b, [m.id]: null }));
+    }
   };
 
   const exportSelectedCsv = () => {
@@ -415,10 +473,9 @@ export function ManifestoView() {
             </Label>
             <Input
               type="date"
-              max={search.dateTo || todayInManila()}
               value={search.dateFrom}
               onChange={(e) =>
-                setFilters({ dateFrom: clampDateToToday(e.target.value) })
+                setFilters({ dateFrom: e.target.value })
               }
               className="w-40"
             />
@@ -429,11 +486,9 @@ export function ManifestoView() {
             </Label>
             <Input
               type="date"
-              min={search.dateFrom || undefined}
-              max={todayInManila()}
               value={search.dateTo}
               onChange={(e) =>
-                setFilters({ dateTo: clampDateToToday(e.target.value) })
+                setFilters({ dateTo: e.target.value })
               }
               className="w-40"
             />
@@ -458,12 +513,47 @@ export function ManifestoView() {
         />
       </div>
 
-      <div className="text-xs text-muted-foreground">
-        {manifestsSource.isLoading
-          ? "Loading manifestos…"
-          : `${filtered.length} of ${items.length} manifesto${
-              items.length !== 1 ? "s" : ""
-            }`}
+      <div className="flex items-center justify-between flex-wrap gap-3 py-1">
+        <div className="flex items-center gap-2.5 text-xs text-muted-foreground">
+          <span>
+            {manifestsSource.isLoading
+              ? "Loading manifestos…"
+              : `${filtered.length} of ${items.length} manifesto${
+                  items.length !== 1 ? "s" : ""
+                }`}
+          </span>
+          {isLiveData ? (
+            <Badge variant="outline" className="text-[10px] text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10 gap-1.5 h-5 px-2 font-medium">
+              <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Live Supabase ({items.length})
+            </Badge>
+          ) : manifestsSource.usingDemo ? (
+            <Badge variant="outline" className="text-[10px] text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 gap-1.5 h-5 px-2 font-medium">
+              <span className="size-1.5 rounded-full bg-amber-500" />
+              Demo Mock Fallback
+            </Badge>
+          ) : null}
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-7 text-xs gap-1.5 px-2.5 hover:bg-secondary"
+          disabled={liveManifests.isFetching}
+          onClick={async () => {
+            const toastId = toast.loading("Syncing latest manifestos from Supabase...");
+            try {
+              invalidateManifests();
+              await liveManifests.refetch();
+              toast.success("Manifesto registry updated", { id: toastId });
+            } catch (err) {
+              toast.error("Sync failed", { id: toastId, description: dbErrorMessage(err) });
+            }
+          }}
+          title="Refresh manifestos directly from Supabase"
+        >
+          <RotateCw className={`size-3.5 ${liveManifests.isFetching ? "animate-spin text-primary" : ""}`} />
+          <span>Sync Live Data</span>
+        </Button>
       </div>
 
       <div className="flex items-center gap-1 bg-secondary/60 rounded-lg p-0.5 w-fit">
@@ -534,8 +624,21 @@ export function ManifestoView() {
         {manifestsSource.isLoading ? (
           <CardGridSkeleton count={8} />
         ) : filtered.length === 0 ? (
-          <div className="col-span-full text-center py-12 text-muted-foreground">
-            No manifestos match the current filters.
+          <div className="col-span-full text-center py-12 text-muted-foreground space-y-3">
+            <p className="text-sm font-medium">No manifestos match the current filters.</p>
+            {activeFilters.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setFilters({ q: "", site: "All", dateFrom: "", dateTo: "" });
+                  setVerificationFilter("all");
+                }}
+                className="text-xs"
+              >
+                Clear all filters ({items.length} total manifestos available)
+              </Button>
+            )}
           </div>
         ) : (
           mPaged.map((m, idx) => {
@@ -547,7 +650,7 @@ export function ManifestoView() {
                 style={{ animationDelay: `${idx * 40}ms` }}
               >
                 <Card
-                  className={`p-0 overflow-hidden shadow-elegant border-border/60 hover:shadow-glow hover:-translate-y-0.5 transition-all ${
+                  className={`p-0 overflow-hidden shadow-elegant border-border/60 hover:shadow-glow hover:-translate-y-0.5 transition-all flex flex-col ${
                     selected.has(m.id) ? "ring-2 ring-primary/40" : ""
                   }`}
                 >
@@ -573,20 +676,18 @@ export function ManifestoView() {
                     <div className="text-xs text-muted-foreground">
                       {m.date}
                     </div>
-                    <div className="flex gap-1.5 pt-1">
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-1.5 pt-2 border-t border-border/40">
                       <Button
                         size="sm"
                         variant={isVerified(m) ? "default" : "outline"}
-                        className="flex-1"
+                        className={`flex-1 h-8 ${isVerified(m) ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleVerify(m.id);
                         }}
-                        title={
-                          isVerified(m)
-                            ? "Mark as unverified"
-                            : "Mark as verified"
-                        }
+                        title={isVerified(m) ? "Mark as unverified" : "Mark as verified"}
                       >
                         {isVerified(m) ? (
                           <ShieldCheck className="size-4" />
@@ -597,20 +698,30 @@ export function ManifestoView() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="flex-1"
-                        disabled={!!b}
-                        onClick={() => openViewing(m)}
-                        title="Preview & download"
+                        className="flex-1 h-8"
+                        disabled={rowBusy[m.id] === "download"}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          downloadImageManifesto(m);
+                        }}
+                        title="Download Manifesto as Image (PNG)"
                       >
-                        <Download className="size-4" />
+                        {rowBusy[m.id] === "download" ? (
+                          <Loader2 className="size-4 animate-spin text-primary" />
+                        ) : (
+                          <ImageIcon className="size-4" />
+                        )}
                       </Button>
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="flex-1"
+                        className="flex-1 h-8"
                         disabled={!!b}
-                        onClick={() => setForwardDialog([m.id])}
-                        title="Forward"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setForwardDialog([m.id]);
+                        }}
+                        title="Forward Manifest"
                       >
                         {b === "forward" ? (
                           <Loader2 className="size-4 animate-spin" />
@@ -621,9 +732,9 @@ export function ManifestoView() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="flex-1"
+                        className="flex-1 h-8"
                         onClick={() => openViewing(m)}
-                        title="View"
+                        title="View Full Details"
                       >
                         <Eye className="size-4" />
                       </Button>

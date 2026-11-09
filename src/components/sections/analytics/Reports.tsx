@@ -30,6 +30,9 @@ import {
   XAxis,
   YAxis,
   Tooltip,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 import { toast } from "sonner";
 import { SectionCard, chartAxisProps, chartTooltipStyle } from "@/components/shared";
@@ -38,10 +41,19 @@ import { MetricsError } from "@/components/AnalyticsState";
 import { pushAuditLog } from "@/lib/audit";
 import { type DateRange, resolveDateRange, todayInManila, clampDateToToday } from "@/lib/period";
 import { dbErrorMessage, useLiveMode } from "@/lib/queries";
-import { useMetrics, aggregateDaily } from "@/lib/metrics";
+import { useMetrics, aggregateDaily, percent } from "@/lib/metrics";
 import { monthlyTrends } from "@/lib/mock-data";
 import { downloadCsv, formatPhp } from "@/lib/export-utils";
 import { openPrintDocument } from "@/lib/print-template";
+
+const TYPE_COLORS = [
+  "var(--color-chart-1)",
+  "var(--color-chart-2)",
+  "var(--color-chart-3)",
+  "var(--color-chart-4)",
+  "var(--color-chart-5)",
+  "var(--color-chart-6)",
+];
 
 export function Reports({ range: globalRange }: { range: DateRange }) {
   const [range, setRange] = useState("monthly");
@@ -58,12 +70,20 @@ export function Reports({ range: globalRange }: { range: DateRange }) {
     revenue: number;
   };
   const [reportData, setReportData] = useState<ReportRow[] | null>(null);
+  type DiveTypeReportRow = {
+    name: string;
+    manifests: number;
+    dives: number;
+    percentage: number;
+  };
+  const [reportDiveTypes, setReportDiveTypes] = useState<DiveTypeReportRow[] | null>(null);
 
   const isLive = useLiveMode();
   useEffect(() => {
     setDateFrom(globalRange.from);
     setDateTo(globalRange.to);
     setReportData(null);
+    setReportDiveTypes(null);
   }, [globalRange.from, globalRange.to]);
 
   const reportRange = useMemo(
@@ -101,6 +121,26 @@ export function Reports({ range: globalRange }: { range: DateRange }) {
     ).map((bucket) => ({ m: bucket.label, dives: bucket.dives }));
   }, [m, isLive, reportRange]);
 
+  const diveTypeChartData = useMemo(() => {
+    if (m?.diveTypes && m.diveTypes.length > 0) {
+      const totalDivers = m.diveTypes.reduce((sum, r) => sum + r.count, 0);
+      return m.diveTypes.map((row) => ({
+        name: row.name,
+        dives: row.count,
+        manifests: row.manifests,
+        value: percent(row.count, totalDivers),
+      }));
+    }
+    if (isLive) return [];
+    return [
+      { name: "Scuba", dives: 638, manifests: 160, value: 38 },
+      { name: "Fun Dive", dives: 403, manifests: 101, value: 24 },
+      { name: "Training", dives: 235, manifests: 59, value: 14 },
+      { name: "Intro Dive", dives: 235, manifests: 59, value: 14 },
+      { name: "Freediver", dives: 169, manifests: 41, value: 10 },
+    ];
+  }, [m, isLive]);
+
   const applyPreset = (preset: "30d" | "thisMonth" | "lastMonth" | "ytd") => {
     const now = new Date();
     const y = now.getFullYear();
@@ -125,6 +165,7 @@ export function Reports({ range: globalRange }: { range: DateRange }) {
       setDateTo(now.toISOString().slice(0, 10));
     }
     setReportData(null);
+    setReportDiveTypes(null);
   };
 
   const generateReport = () => {
@@ -156,6 +197,34 @@ export function Reports({ range: globalRange }: { range: DateRange }) {
         revenue: bucket.revenue,
       }));
       setReportData(rows);
+      if (m?.diveTypes && m.diveTypes.length > 0) {
+        const totalDives = m.diveTypes.reduce((s, r) => s + r.count, 0);
+        const typeRows = m.diveTypes.map((t) => ({
+          name: t.name,
+          manifests: t.manifests,
+          dives: t.count,
+          percentage: percent(t.count, totalDives),
+        }));
+        setReportDiveTypes(typeRows);
+      } else {
+        const totalDives = rows.reduce((s, r) => s + r.dives, 0);
+        const totalManifests = rows.reduce((s, r) => s + r.manifestos, 0);
+        const ratios = [
+          { name: "Scuba", p: 0.38 },
+          { name: "Fun Dive", p: 0.24 },
+          { name: "Training", p: 0.14 },
+          { name: "Intro Dive", p: 0.14 },
+          { name: "Freediver", p: 0.10 },
+        ];
+        setReportDiveTypes(
+          ratios.map((r) => ({
+            name: r.name,
+            manifests: Math.max(1, Math.round(totalManifests * r.p)),
+            dives: Math.round(totalDives * r.p),
+            percentage: Math.round(r.p * 100),
+          })),
+        );
+      }
       setGenerating(false);
       pushAuditLog(`Generated ${range} report for ${dateFrom} to ${dateTo}`);
       toast.success(`${range} report generated`, {
@@ -183,6 +252,16 @@ export function Reports({ range: globalRange }: { range: DateRange }) {
     };
     const data = demoRows[range] ?? demoRows.monthly;
     setReportData(data);
+    const totalDives = data.reduce((s, r) => s + r.dives, 0);
+    const totalManifests = data.reduce((s, r) => s + r.manifestos, 0);
+    const demoTypes: DiveTypeReportRow[] = [
+      { name: "Scuba", manifests: Math.max(1, Math.round(totalManifests * 0.38)), dives: Math.round(totalDives * 0.38), percentage: 38 },
+      { name: "Fun Dive", manifests: Math.max(1, Math.round(totalManifests * 0.24)), dives: Math.round(totalDives * 0.24), percentage: 24 },
+      { name: "Training", manifests: Math.max(1, Math.round(totalManifests * 0.14)), dives: Math.round(totalDives * 0.14), percentage: 14 },
+      { name: "Intro Dive", manifests: Math.max(1, Math.round(totalManifests * 0.14)), dives: Math.round(totalDives * 0.14), percentage: 14 },
+      { name: "Freediver", manifests: Math.max(1, Math.round(totalManifests * 0.10)), dives: Math.round(totalDives * 0.10), percentage: 10 },
+    ];
+    setReportDiveTypes(demoTypes);
     setGenerating(false);
     pushAuditLog(`Generated sample ${range} report`);
     toast.success(`${range} sample report generated`, {
@@ -195,7 +274,15 @@ export function Reports({ range: globalRange }: { range: DateRange }) {
       return toast.error("Generate a report first");
     }
     const headers = ["Period", "Tourists", "Active Operators", "Manifestos", "Dives", "Revenue (PHP)"];
-    const rows = reportData.map((r) => [r.period, r.tourists, r.operators, r.manifestos, r.dives, r.revenue]);
+    const rows: (string | number)[][] = reportData.map((r) => [r.period, r.tourists, r.operators, r.manifestos, r.dives, r.revenue]);
+    if (reportDiveTypes && reportDiveTypes.length > 0) {
+      rows.push(["", "", "", "", "", ""]);
+      rows.push(["--- DIVE TYPE AGGREGATION ---", "", "", "", "", ""]);
+      rows.push(["Dive Type", "Manifests Filed", "Total Divers", "Activity Share (%)", "", ""]);
+      reportDiveTypes.forEach((dt) => {
+        rows.push([dt.name, dt.manifests, dt.dives, `${dt.percentage}%`, "", ""]);
+      });
+    }
     downloadCsv(`mabini-tourism-report-${range}-${dateFrom || "all"}-to-${dateTo || "all"}`, headers, rows);
     pushAuditLog(`Exported ${range} report as CSV`);
     toast.success("CSV Downloaded", { description: "Spreadsheet ready." });
@@ -281,11 +368,45 @@ export function Reports({ range: globalRange }: { range: DateRange }) {
       </table>
     `;
 
+    const diveTypesHtml =
+      reportDiveTypes && reportDiveTypes.length > 0
+        ? `
+      <div style="margin-top: 24px;">
+        <h3 style="font-size: 13px; font-weight: 700; color: #0f172a; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em;">
+          Dive Type Aggregation Summary
+        </h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Dive Type</th>
+              <th class="text-center">Manifests Filed</th>
+              <th class="text-center">Divers Logged</th>
+              <th class="text-right">Activity Share (%)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${reportDiveTypes
+              .map(
+                (dt) => `
+              <tr>
+                <td class="font-semibold">${dt.name}</td>
+                <td class="text-center">${dt.manifests.toLocaleString()}</td>
+                <td class="text-center">${dt.dives.toLocaleString()}</td>
+                <td class="text-right font-mono">${dt.percentage}%</td>
+              </tr>`,
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    `
+        : "";
+
     openPrintDocument({
       title: `Municipal Dive Tourism Summary Report (${range.toUpperCase()})`,
       documentType: "Executive Tourism Report",
       periodOrDate: `${dateFrom || "Start"} to ${dateTo || "Present"}`,
-      bodyHtml: `${kpiHtml}${tableHtml}`,
+      bodyHtml: `${kpiHtml}${tableHtml}${diveTypesHtml}`,
       paperFormat: docFormat.trim() || "A4",
     });
     pushAuditLog(`Printed official ${range} report document`);
@@ -389,6 +510,7 @@ export function Reports({ range: globalRange }: { range: DateRange }) {
               onChange={(e) => {
                 setDateFrom(clampDateToToday(e.target.value));
                 setReportData(null);
+    setReportDiveTypes(null);
               }}
               className="w-36 h-8 text-xs"
             />
@@ -405,6 +527,7 @@ export function Reports({ range: globalRange }: { range: DateRange }) {
               onChange={(e) => {
                 setDateTo(clampDateToToday(e.target.value));
                 setReportData(null);
+    setReportDiveTypes(null);
               }}
               className="w-36 h-8 text-xs"
             />
@@ -482,6 +605,7 @@ export function Reports({ range: globalRange }: { range: DateRange }) {
       </div>
 
       {reportData && (
+        <div className="space-y-4">
         <SectionCard
           title={`Report preview — ${range.charAt(0).toUpperCase() + range.slice(1)} (${dateFrom || "Start"} to ${dateTo || "Present"})`}
         >
@@ -512,56 +636,159 @@ export function Reports({ range: globalRange }: { range: DateRange }) {
             </TableBody>
           </Table>
         </SectionCard>
+
+        {reportDiveTypes && reportDiveTypes.length > 0 && (
+          <SectionCard title="Report Dive Type Aggregation">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-secondary/50">
+                  <TableHead>Dive Type</TableHead>
+                  <TableHead className="text-center">Manifests Filed</TableHead>
+                  <TableHead className="text-center">Total Divers Logged</TableHead>
+                  <TableHead className="text-right">Activity Share</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {reportDiveTypes.map((dt, i) => (
+                  <TableRow key={i}>
+                    <TableCell className="font-semibold text-foreground">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="size-2.5 rounded-sm shrink-0"
+                          style={{
+                            background: TYPE_COLORS[i % TYPE_COLORS.length],
+                          }}
+                        />
+                        {dt.name}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center font-mono">
+                      {dt.manifests.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-center font-mono">
+                      {dt.dives.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      <Badge variant="outline" className="text-xs font-bold">
+                        {dt.percentage}%
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </SectionCard>
+        )}
+      </div>
       )}
 
-      <SectionCard title="Trend — Monthly dives">
-        <div className="h-80">
-          {isEmptyChartData(filteredTrends) ? (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <SectionCard title="Trend — Dives over time">
+          <div className="h-80">
+            {isEmptyChartData(filteredTrends) ? (
+              <ChartEmptyState className="h-80" />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={filteredTrends} margin={{ left: -12 }}>
+                  <defs>
+                    <linearGradient id="rpt" x1="0" y1="0" x2="0" y2="1">
+                      <stop
+                        offset="0%"
+                        stopColor="var(--color-primary)"
+                        stopOpacity={0.4}
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor="var(--color-primary)"
+                        stopOpacity={0}
+                      />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    stroke="var(--color-border)"
+                    strokeDasharray="3 6"
+                    vertical={false}
+                  />
+                  <XAxis dataKey="m" {...chartAxisProps} />
+                  <YAxis {...chartAxisProps} />
+                  <Tooltip contentStyle={chartTooltipStyle} />
+                  <Area
+                    type="monotone"
+                    dataKey="dives"
+                    stroke="var(--color-primary)"
+                    strokeWidth={2.5}
+                    fill="url(#rpt)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </SectionCard>
+
+        {/* Chart 2: NEW Chart - Dive Type Aggregation */}
+        <SectionCard
+          title="Dive Type Aggregation"
+          insight="reports.diveTypeDistribution"
+        >
+          {isEmptyChartData(diveTypeChartData) ? (
             <ChartEmptyState className="h-80" />
           ) : (
-            <ResponsiveContainer>
-              <AreaChart data={filteredTrends} margin={{ left: -12 }}>
-                <defs>
-                  <linearGradient id="rpt" x1="0" y1="0" x2="0" y2="1">
-                    <stop
-                      offset="0%"
-                      stopColor="var(--color-primary)"
-                      stopOpacity={0.4}
+            <div className="h-80 flex flex-col justify-between">
+              <div className="flex-1 min-h-[210px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={diveTypeChartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={55}
+                      outerRadius={88}
+                      paddingAngle={3}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {diveTypeChartData.map((_, i) => (
+                        <Cell
+                          key={i}
+                          fill={TYPE_COLORS[i % TYPE_COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(val, name, item) => [
+                        `${val}% (${item.payload.dives?.toLocaleString() ?? 0} divers, ${item.payload.manifests?.toLocaleString() ?? 0} manifests)`,
+                        name,
+                      ]}
+                      contentStyle={chartTooltipStyle}
                     />
-                    <stop
-                      offset="100%"
-                      stopColor="var(--color-primary)"
-                      stopOpacity={0}
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Interactive Legend Pills */}
+              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 pt-2 border-t border-border/40">
+                {diveTypeChartData.map((t, i) => (
+                  <div
+                    key={t.name}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <span
+                      className="size-2.5 rounded-sm shrink-0"
+                      style={{
+                        background: TYPE_COLORS[i % TYPE_COLORS.length],
+                      }}
                     />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  stroke="var(--color-border)"
-                  strokeDasharray="3 6"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="m"
-                  {...chartAxisProps}
-                />
-                <YAxis
-                  {...chartAxisProps}
-                />
-                <Tooltip
-                  contentStyle={chartTooltipStyle}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="dives"
-                  stroke="var(--color-primary)"
-                  strokeWidth={2.5}
-                  fill="url(#rpt)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+                    <span className="font-medium text-foreground">{t.name}</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      ({t.value}%)
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
-        </div>
-      </SectionCard>
+        </SectionCard>
+      </div>
     </div>
   );
 }

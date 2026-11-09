@@ -131,6 +131,7 @@ export interface LiveAppRow {
   contact_number: string | null;
   business_permit_url: string | null;
   pcss_url: string | null;
+  dot_accreditation_url: string | null;
   website: string | null;
   tourist_id: string;
 }
@@ -179,6 +180,7 @@ async function fetchOperatorApplications(): Promise<LiveAppRow[]> {
     contact_number: a.contact_number ?? null,
     business_permit_url: a.business_permit_url ?? null,
     pcss_url: a.pcss_url ?? null,
+    dot_accreditation_url: a.dot_accreditation_url ?? a.dot_url ?? null,
     website: a.website_url ?? null,
     tourist_id: a.tourist_id,
   }));
@@ -305,14 +307,34 @@ export interface LiveTouristRow {
   registered: string;
   expires: string;
   createdAt: string;
+  agency?: string | null;
+  license_number?: string | null;
+  credentials_url?: string | null;
+  affiliated_operator?: string | null;
+  pro_verified?: boolean;
+  dateAccredited?: string | null;
+  dive_pass_type?: "annual" | "one-day" | string | null;
+  // Diver Profile Checklist Fields
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
+  type_of_dive?: string | null;
+  diver_type?: string | null;
+  pcssd_number?: string | null;
+  pcssd_certificate_url?: string | null;
+  pcssd_url?: string | null;
+  pcssd_accreditation_no?: string | null;
+  pto_number?: string | null;
+  pto_url?: string | null;
+  permit_to_operate_url?: string | null;
+  permit_to_operate_no?: string | null;
+  emergency_contact_number?: string | null;
+  data_privacy_consent?: boolean;
 }
 
 async function fetchTourists(): Promise<LiveTouristRow[]> {
   const { data: rows, error } = await supabase
     .from("tourists")
-    .select(
-      "id, full_name, nationality, certification_level, status, date_accredited, renewal_date, created_at"
-    )
+    .select("*")
     .order("created_at", { ascending: false })
     .limit(500);
   if (error) throw error;
@@ -329,16 +351,77 @@ async function fetchTourists(): Promise<LiveTouristRow[]> {
         : renewal !== "—" && renewal < today
           ? "Expired"
           : "Active";
+
+    const pcssdNum =
+      t.pcssd_accreditation_no ??
+      t.pcssd_number ??
+      t.pcssd_no ??
+      null;
+    let pcssdUrl =
+      t.pcssd_url ??
+      t.pcssd_certificate_url ??
+      t.pcss_url ??
+      null;
+    const ptoNum =
+      t.permit_to_operate_no ??
+      t.pto_number ??
+      t.permit_to_operate_number ??
+      t.pto_no ??
+      t.permit_number ??
+      null;
+    let ptoUrl =
+      t.permit_to_operate_url ??
+      t.pto_url ??
+      null;
+
+    // Graceful routing for single-upload registrations where credentials_url holds the file:
+    if (!pcssdUrl && !ptoUrl && t.credentials_url) {
+      if (ptoNum && !pcssdNum) {
+        ptoUrl = t.credentials_url;
+      } else {
+        pcssdUrl = t.credentials_url;
+      }
+    }
+    const diverType = t.certification_level ?? t.diver_type ?? null;
+    const typeOfDive = t.type_of_dive ?? t.dive_type ?? null;
+    const emName = t.emergency_contact_name ?? t.emergency_name ?? null;
+    const emPhone =
+      t.emergency_contact_number ??
+      t.emergency_contact_phone ??
+      t.emergency_phone ??
+      null;
+
     return {
       _dbId: t.id,
       id: shortId(t.id),
       name: t.full_name,
       nationality: displayNationality(t.nationality) || null,
-      level: t.certification_level ?? null,
+      level: diverType,
       status,
       registered: dayOf(t.date_accredited || t.created_at),
       expires: renewal,
       createdAt: dayOf(t.created_at),
+      agency: t.agency ?? null,
+      license_number: t.license_number ?? null,
+      credentials_url: t.credentials_url ?? null,
+      affiliated_operator: t.affiliated_operator ?? null,
+      pro_verified: Boolean(t.pro_verified),
+      dateAccredited: t.date_accredited ? dayOf(t.date_accredited) : null,
+      dive_pass_type: t.dive_pass_type ?? null,
+      emergency_contact_name: emName,
+      emergency_contact_phone: emPhone,
+      type_of_dive: typeOfDive,
+      diver_type: diverType,
+      pcssd_number: pcssdNum,
+      pcssd_certificate_url: pcssdUrl,
+      pcssd_url: pcssdUrl,
+      pcssd_accreditation_no: pcssdNum,
+      pto_number: ptoNum,
+      pto_url: ptoUrl,
+      permit_to_operate_url: ptoUrl,
+      permit_to_operate_no: ptoNum,
+      emergency_contact_number: emPhone,
+      data_privacy_consent: t.data_privacy_consent ?? true,
     };
   });
 }
@@ -378,6 +461,52 @@ export async function renewTourist(dbId: string): Promise<string> {
   return renewalDate;
 }
 
+/** Verify or revoke a dive professional's submitted credentials.
+ * Note: Does not set date_accredited. date_accredited is stamped when a dive pass is issued.
+ */
+export async function verifyTouristProCredentials(
+  dbId: string,
+  verified: boolean = true
+): Promise<void> {
+  const { error } = await supabase
+    .from("tourists")
+    .update({
+      pro_verified: verified,
+    })
+    .eq("id", dbId);
+  if (error) throw error;
+}
+
+/** Issue an official Municipal Dive Pass (Annual or One-Day) to a diver account.
+ * Stamped date_accredited upon pass issuance, sets renewal_date, pass type, and Active status.
+ */
+export async function issueTouristDivePass(
+  dbId: string,
+  passType: "annual" | "one-day" = "annual"
+): Promise<{ dateAccredited: string; renewalDate: string; passType: string }> {
+  const today = new Date().toISOString().slice(0, 10);
+  const next = new Date();
+  if (passType === "annual") {
+    next.setFullYear(next.getFullYear() + 1);
+  } else {
+    next.setDate(next.getDate() + 1);
+  }
+  const renewalDate = next.toISOString().slice(0, 10);
+
+  const { error } = await supabase
+    .from("tourists")
+    .update({
+      dive_pass_type: passType,
+      renewal_date: renewalDate,
+      date_accredited: today,
+      status: "Active",
+    })
+    .eq("id", dbId);
+  if (error) throw error;
+
+  return { dateAccredited: today, renewalDate, passType };
+}
+
 export interface LiveManifestRow {
   _dbId: string;
   id: string;
@@ -391,6 +520,10 @@ export interface LiveManifestRow {
   difficulty: string | null;
   boatName: string | null;
   maxDivers: number | null;
+  captainName?: string | null;
+  boatContact?: string | null;
+  crewCount?: number | null;
+  instructorName?: string | null;
 }
 
 export interface LiveDiverRow {
@@ -454,7 +587,6 @@ async function fetchManifests(): Promise<LiveManifestRow[]> {
       "Unknown operator",
     site: m.location,
     divers: diversByManifest.get(m.id) || 0,
-    // dive_manifests carries no dive-date column — created day is the date.
     date: dayOf(m.created_at),
     verified: m.verified === true,
     diveType: m.dive_type ?? null,
@@ -462,6 +594,10 @@ async function fetchManifests(): Promise<LiveManifestRow[]> {
     difficulty: m.difficulty ?? null,
     boatName: m.boat_name ?? null,
     maxDivers: m.max_divers ?? null,
+    captainName: m.captain_name ?? null,
+    boatContact: m.boat_contact ?? null,
+    crewCount: m.crew_count ?? null,
+    instructorName: m.instructor_name ?? null,
   }));
 }
 
@@ -487,7 +623,14 @@ export async function setManifestVerified(
       verified_at: verified ? new Date().toISOString() : null,
     })
     .eq("id", dbId);
-  if (error) throw error;
+  if (error) {
+    if (error.message?.includes("eco_dive_ids") && error.message?.includes("updated_at")) {
+      throw new Error(
+        "Database requires migration 050_eco_dive_ids_updated_at.sql in Supabase SQL Editor: 'ALTER TABLE public.eco_dive_ids ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();'"
+      );
+    }
+    throw error;
+  }
 }
 
 /** Diver roster for one manifest (lightbox detail). */
@@ -515,6 +658,82 @@ export async function getReceiptUrl(path: string): Promise<string | null> {
     .createSignedUrl(path, 3600);
   if (error || !data?.signedUrl) return null;
   return data.signedUrl;
+}
+
+/** Determine if a document URL points to a PDF. */
+export function isPdfUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  const clean = url.split("?")[0].toLowerCase();
+  return clean.endsWith(".pdf") || url.includes("application/pdf");
+}
+
+/**
+ * Resolves a storage path or document URL into an authenticated signed URL.
+ * Handles:
+ * - Data URIs (data:image/...) -> returned directly
+ * - Local mock paths (/mock-docs/...) -> returned directly
+ * - Supabase storage private URLs (operator_uploads / tourist_uploads) -> signed (1h)
+ * - Plain storage paths (permits/..., operator_uploads/...) -> signed (1h)
+ * - Fallbacks to public URL or original URL
+ */
+export async function resolveDocumentUrl(
+  rawPathOrUrl: string | null | undefined,
+  defaultBucket = "operator_uploads",
+): Promise<string | null> {
+  if (!rawPathOrUrl) return null;
+  const trimmed = rawPathOrUrl.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith("data:") || trimmed.startsWith("blob:")) {
+    return trimmed;
+  }
+
+  let bucket = defaultBucket;
+  let path = trimmed;
+
+  if (path.includes("/storage/v1/object/")) {
+    const match = path.match(
+      /\/storage\/v1\/object\/(?:public|authenticated|sign)\/([^/]+)\/(.+)$/,
+    );
+    if (match) {
+      bucket = match[1];
+      path = decodeURIComponent(match[2].split("?")[0]);
+    }
+  } else if (path.startsWith("operator_uploads/")) {
+    bucket = "operator_uploads";
+    path = path.slice("operator_uploads/".length);
+  } else if (path.startsWith("tourist_uploads/")) {
+    bucket = "tourist_uploads";
+    path = path.slice("tourist_uploads/".length);
+  }
+
+  // If path is a full external URL (not Supabase storage), return it
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
+
+  // If path is a local route (like /mock-docs/...)
+  if (path.startsWith("/")) {
+    return path;
+  }
+
+  try {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .createSignedUrl(path, 3600);
+    if (!error && data?.signedUrl) {
+      return data.signedUrl;
+    }
+  } catch (err) {
+    console.warn("Could not create signed URL for", trimmed, err);
+  }
+
+  try {
+    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+    if (data?.publicUrl) return data.publicUrl;
+  } catch {}
+
+  return trimmed;
 }
 
 export function useInvalidateLive() {
@@ -924,6 +1143,9 @@ export interface LiveEstablishmentRow {
   description: string | null;
   imageUrl: string | null;
   createdAt: string;
+  business_permit_url?: string | null;
+  pcss_url?: string | null;
+  dot_accreditation_url?: string | null;
 }
 
 function barangayOf(location: string | null): string {
@@ -952,7 +1174,7 @@ async function fetchEstablishments(): Promise<LiveEstablishmentRow[]> {
     names.length > 0
       ? supabase
           .from("operator_applications")
-          .select("resort_name, tourist_id, status")
+          .select("resort_name, tourist_id, status, business_permit_url, pcss_url, dot_accreditation_url")
           .in("resort_name", names)
       : Promise.resolve({ data: [], error: null }),
     supabase.from("dive_manifests").select("id, operator_id"),
@@ -986,12 +1208,20 @@ async function fetchEstablishments(): Promise<LiveEstablishmentRow[]> {
     if (tErr) throw tErr;
     nameById = new Map((tourists || []).map((t: any) => [t.id, t.full_name]));
   }
+  const docsByResort = new Map<string, { permit: string | null; pcss: string | null; dot: string | null }>();
   for (const a of (appsRes.data || []) as any[]) {
     if (a.status === "approved" || !ownerByResort.has(a.resort_name)) {
       ownerByResort.set(
         a.resort_name,
         nameById.get(a.tourist_id) || "Unknown owner"
       );
+    }
+    if (a.resort_name && !docsByResort.has(a.resort_name)) {
+      docsByResort.set(a.resort_name, {
+        permit: a.business_permit_url || null,
+        pcss: a.pcss_url || null,
+        dot: a.dot_accreditation_url || a.dot_url || null,
+      });
     }
   }
   // Manifest/credit rollups keyed by operator PERSON id can't join to
@@ -1044,6 +1274,9 @@ async function fetchEstablishments(): Promise<LiveEstablishmentRow[]> {
     description: e.description ?? null,
     imageUrl: e.image_url ?? null,
     createdAt: dayOf(e.created_at),
+    business_permit_url: e.business_permit_url ?? docsByResort.get(e.name)?.permit ?? null,
+    pcss_url: e.pcss_url ?? docsByResort.get(e.name)?.pcss ?? null,
+    dot_accreditation_url: e.dot_accreditation_url ?? docsByResort.get(e.name)?.dot ?? null,
   }));
 }
 
@@ -1078,12 +1311,14 @@ export interface NewEstablishmentFromApp {
   contactNumber: string | null;
   touristEmail: string | null;
   website?: string | null;
+  business_permit_url?: string | null;
+  pcss_url?: string | null;
+  dot_accreditation_url?: string | null;
 }
 
 /**
  * Graduation write: insert the establishment row for an approved
- * application. Requires 035 (staff INSERT). Partial data by design — permit
- * fields belong to a future permit-management scope.
+ * application. Transfers verified business permit, PCSSD, and DOT document photo URLs.
  */
 export async function createEstablishmentFromApplication(
   app: NewEstablishmentFromApp
@@ -1095,6 +1330,9 @@ export async function createEstablishmentFromApplication(
     phone: app.contactNumber,
     website: app.website || null,
     accredited: true,
+    business_permit_url: app.business_permit_url || null,
+    pcss_url: app.pcss_url || null,
+    dot_accreditation_url: app.dot_accreditation_url || null,
   });
   if (error) throw error;
 }

@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1050" width="800" height="1050">
+  <defs>
+    <linearGradient id="pcssdGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f0fdfa"/>
+      <stop offset="100%" stop-color="#e6fffa"/>
+    </linearGradient>
+    <linearGradient id="blueBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7"/>
+      <stop offset="50%" stop-color="#0369a1"/>
+      <stop offset="100%" stop-color="#075985"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Certificate Border -->
+  <rect x="20" y="20" width="760" height="1010" rx="8" fill="url(#pcssdGrad)" stroke="url(#blueBorder)" stroke-width="8"/>
+  <rect x="36" y="36" width="728" height="978" rx="4" fill="none" stroke="#0ea5e9" stroke-width="2" stroke-dasharray="10 5"/>
+
+  <!-- Header -->
+  <g text-anchor="middle" font-family="Georgia, serif">
+    <text x="400" y="90" font-size="13" fill="#64748b" letter-spacing="2">REPUBLIC OF THE PHILIPPINES</text>
+    <text x="400" y="112" font-size="14" fill="#64748b" letter-spacing="1">DEPARTMENT OF TOURISM</text>
+    <text x="400" y="140" font-size="17" font-weight="bold" fill="#0369a1" letter-spacing="1.5">PHILIPPINE COMMISSION ON SPORTS SCUBA DIVING</text>
+    <text x="400" y="162" font-size="12" font-style="italic" fill="#0284c7">PCSSD - Tourism Standards and Safety Directorate</text>
+
+    <!-- Scuba Logo Emblem -->
+    <circle cx="400" cy="225" r="36" fill="#0284c7" opacity="0.15"/>
+    <circle cx="400" cy="225" r="32" fill="none" stroke="#0284c7" stroke-width="2"/>
+    <!-- Diver silhouette symbol -->
+    <path d="M 385 220 Q 400 210 415 225 Q 405 235 385 220 Z" fill="#0284c7"/>
+    <circle cx="380" cy="216" r="4" fill="#0284c7"/>
+    <text x="400" y="274" font-size="10" font-weight="bold" fill="#0369a1" letter-spacing="1">PCSSD ACCREDITED DIVE ESTABLISHMENT</text>
+
+    <!-- Title -->
+    <text x="400" y="335" font-size="32" font-weight="bold" fill="#0c4a6e" letter-spacing="3">CERTIFICATE OF ACCREDITATION</text>
+    <text x="400" y="362" font-size="15" font-weight="bold" fill="#0284c7" letter-spacing="2">SPORTS SCUBA DIVING OPERATOR</text>
+    <line x1="220" y1="376" x2="580" y2="376" stroke="#0ea5e9" stroke-width="2"/>
+  </g>
+
+  <!-- Body -->
+  <g font-family="Arial, sans-serif" fill="#1e293b">
+    <rect x="80" y="405" width="640" height="85" rx="6" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="105" y="435" font-size="11" fill="#64748b" font-weight="bold">PCSSD ACCREDITATION NUMBER</text>
+    <text x="105" y="468" font-size="22" font-weight="bold" fill="#0369a1" font-family="'Courier New', monospace">PCSS-2026-1044</text>
+
+    <text x="390" y="435" font-size="11" fill="#64748b" font-weight="bold">CATEGORY</text>
+    <text x="390" y="465" font-size="14" font-weight="bold" fill="#0f172a">Class A - Dive Resort &amp; Center</text>
+
+    <text x="560" y="435" font-size="11" fill="#64748b" font-weight="bold">EXPIRY DATE</text>
+    <text x="560" y="465" font-size="14" font-weight="bold" fill="#15803d">March 31, 2027</text>
+
+    <text x="80" y="530" font-size="13" fill="#475569">This is to certify that the diving establishment identified as:</text>
+
+    <rect x="80" y="545" width="640" height="58" rx="4" fill="#f0f9ff" stroke="#bae6fd"/>
+    <text x="105" y="582" font-size="20" font-weight="bold" fill="#0369a1">DEEP BLUE CHARTERS</text>
+
+    <text x="80" y="635" font-size="12" fill="#64748b">Location &amp; Operations Base:</text>
+    <text x="290" y="635" font-size="13" font-weight="bold" fill="#0f172a">San Teodoro, Anilao Coast, Mabini, Batangas</text>
+
+    <text x="80" y="665" font-size="12" fill="#64748b">Compressor &amp; Air Purity Inspection:</text>
+    <text x="290" y="665" font-size="13" font-weight="bold" fill="#15803d">PASSED - Grade E Breathing Air Standard</text>
+
+    <text x="80" y="695" font-size="12" fill="#64748b">Emergency Oxygen &amp; First Aid Equipment:</text>
+    <text x="290" y="695" font-size="13" font-weight="bold" fill="#15803d">INSPECTED &amp; COMPLIANT (DAN Kit on Board)</text>
+
+    <text x="80" y="725" font-size="12" fill="#64748b">Licensed Guides &amp; Dive Instructors:</text>
+    <text x="290" y="725" font-size="13" font-weight="bold" fill="#0f172a">Verified PCSSD Certified Guides</text>
+
+    <rect x="80" y="755" width="640" height="65" rx="4" fill="#ecfdf5" stroke="#a7f3d0"/>
+    <text x="95" y="780" font-size="10.5" fill="#065f46">HAS SATISFACTORILY COMPLIED WITH ALL RULES AND REGULATIONS PRESCRIBED UNDER PCSSD</text>
+    <text x="95" y="798" font-size="10.5" fill="#065f46">ADMINISTRATIVE ORDER NO. 2017-001 GOVERNING SPORTS DIVING SAFETY STANDARDS.</text>
+  </g>
+
+  <!-- Official Seal and Signatures -->
+  <g font-family="Arial, sans-serif">
+    <g transform="translate(180, 905) rotate(-8)">
+      <circle cx="0" cy="0" r="48" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-dasharray="5 2.5"/>
+      <circle cx="0" cy="0" r="42" fill="none" stroke="#0284c7" stroke-width="1.5"/>
+      <text x="0" y="-16" font-size="8" font-weight="bold" fill="#0284c7" text-anchor="middle">PCSSD SECRETARIAT</text>
+      <text x="0" y="3" font-size="12" font-weight="bold" fill="#0284c7" text-anchor="middle">ACCREDITED</text>
+      <text x="0" y="18" font-size="8" font-weight="bold" fill="#0284c7" text-anchor="middle">DIVE SAFETY 2026</text>
+    </g>
+
+    <line x1="360" y1="935" x2="520" y2="935" stroke="#333" stroke-width="1.5"/>
+    <path d="M 370 930 Q 410 890 450 930 T 510 920" fill="none" stroke="#0284c7" stroke-width="2"/>
+    <text x="440" y="950" font-size="11" font-weight="bold" fill="#0f172a" text-anchor="middle">MARCO V. DELA CERNA</text>
+    <text x="440" y="964" font-size="9" fill="#64748b" text-anchor="middle">PCSSD Operations Officer</text>
+
+    <line x1="560" y1="935" x2="710" y2="935" stroke="#333" stroke-width="1.5"/>
+    <path d="M 570 925 Q 610 890 650 925 T 700 920" fill="none" stroke="#0369a1" stroke-width="2.5"/>
+    <text x="635" y="950" font-size="11" font-weight="bold" fill="#0f172a" text-anchor="middle">DIR. SOFIA E. ALVAREZ</text>
+    <text x="635" y="964" font-size="9" fill="#64748b" text-anchor="middle">Executive Director, PCSSD</text>
+  </g>
+</svg>

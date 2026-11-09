@@ -15,7 +15,7 @@ export interface PrintDocumentOptions {
   paperFormat?: string;
 }
 
-export function openPrintDocument(options: PrintDocumentOptions): void {
+export function generatePrintDocumentHtml(options: PrintDocumentOptions): string {
   const {
     title,
     documentType,
@@ -27,13 +27,7 @@ export function openPrintDocument(options: PrintDocumentOptions): void {
     paperFormat = 'A4',
   } = options;
 
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
-    alert('Please allow popups to generate and print documents.');
-    return;
-  }
-
-  const html = `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -107,55 +101,30 @@ export function openPrintDocument(options: PrintDocumentOptions): void {
       font-size: 11pt;
       font-weight: 600;
       color: #0284c7;
-      margin-top: 2px;
+      margin-top: 4px;
     }
     .doc-meta {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 20px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid #e2e8f0;
-      font-size: 9.5pt;
+      font-size: 9pt;
+      color: #64748b;
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: 1px dashed #cbd5e1;
     }
     .doc-title-block {
       text-align: center;
       margin-bottom: 24px;
     }
     .doc-title {
-      font-size: 15pt;
+      font-size: 16pt;
       font-weight: 700;
       color: #0f172a;
       text-transform: uppercase;
-      letter-spacing: 0.03em;
-    }
-    .doc-subtitle {
-      font-size: 10pt;
-      color: #64748b;
-      margin-top: 4px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 24px;
-      font-size: 9.5pt;
-    }
-    th {
-      background-color: #f8fafc;
-      color: #0f172a;
-      font-weight: 600;
-      text-align: left;
-      padding: 8px 10px;
-      border: 1px solid #cbd5e1;
-      font-size: 9pt;
-      text-transform: uppercase;
       letter-spacing: 0.02em;
     }
-    td {
-      padding: 7px 10px;
-      border: 1px solid #e2e8f0;
-    }
-    tr:nth-child(even) td {
-      background-color: #f8fafc;
+    .font-mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
     .text-right {
       text-align: right;
@@ -163,38 +132,30 @@ export function openPrintDocument(options: PrintDocumentOptions): void {
     .text-center {
       text-align: center;
     }
-    .font-mono {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      font-size: 9.5pt;
     }
-    .font-semibold {
-      font-weight: 600;
-    }
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-bottom: 24px;
-    }
-    .kpi-card {
+    th, td {
+      padding: 8px 10px;
       border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      padding: 10px;
+      text-align: left;
+    }
+    th {
       background: #f8fafc;
-    }
-    .kpi-label {
-      font-size: 8pt;
-      text-transform: uppercase;
-      color: #64748b;
       font-weight: 600;
-    }
-    .kpi-value {
-      font-size: 14pt;
-      font-weight: 700;
       color: #0f172a;
-      margin-top: 2px;
+      text-transform: uppercase;
+      font-size: 8pt;
+      letter-spacing: 0.03em;
+    }
+    tr:nth-child(even) {
+      background: #fcfdfe;
     }
     .signatures {
-      margin-top: 40px;
+      margin-top: 48px;
       display: flex;
       justify-content: space-between;
       page-break-inside: avoid;
@@ -204,26 +165,26 @@ export function openPrintDocument(options: PrintDocumentOptions): void {
       text-align: center;
     }
     .sig-line {
-      border-bottom: 1px solid #0f172a;
-      margin-top: 45px;
+      border-top: 1px solid #0f172a;
       margin-bottom: 6px;
     }
     .sig-name {
       font-weight: 700;
-      font-size: 10pt;
+      font-size: 10.5pt;
       color: #0f172a;
     }
     .sig-title {
-      font-size: 9pt;
-      color: #475569;
+      font-size: 8.5pt;
+      color: #64748b;
     }
     .official-footer {
-      margin-top: 36px;
-      text-align: center;
+      margin-top: 40px;
+      padding-top: 12px;
+      border-top: 1px solid #e2e8f0;
       font-size: 8pt;
       color: #94a3b8;
-      border-top: 1px solid #e2e8f0;
-      padding-top: 10px;
+      text-align: center;
+      page-break-inside: avoid;
     }
     @media print {
       .no-print {
@@ -285,6 +246,73 @@ export function openPrintDocument(options: PrintDocumentOptions): void {
   </div>
 </body>
 </html>`;
+}
+
+export function printViaHiddenIframe(html: string): void {
+  try {
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (doc) {
+      doc.open();
+      doc.write(html);
+      doc.close();
+      setTimeout(() => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } catch (err) {
+          console.error("Iframe print error:", err);
+        }
+        setTimeout(() => {
+          if (iframe.parentNode) {
+            document.body.removeChild(iframe);
+          }
+        }, 60000);
+      }, 250);
+    }
+  } catch (err) {
+    console.error("Print via iframe failed:", err);
+  }
+}
+
+export function downloadDocumentHtml(options: PrintDocumentOptions, filename?: string): void {
+  const html = generatePrintDocumentHtml(options);
+  const fname = filename || `${options.title.replace(/[^a-zA-Z0-9_-]/g, '_')}.html`;
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fname;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 100);
+}
+
+export function openPrintDocument(options: PrintDocumentOptions): void {
+  const html = generatePrintDocumentHtml(options);
+  let printWindow: Window | null = null;
+  try {
+    printWindow = window.open('', '_blank');
+  } catch {
+    printWindow = null;
+  }
+
+  if (!printWindow || printWindow.closed || typeof printWindow.closed === 'undefined') {
+    // Popup was blocked by browser or inside PWA — gracefully fallback to iframe print!
+    printViaHiddenIframe(html);
+    return;
+  }
 
   printWindow.document.open();
   printWindow.document.write(html);
