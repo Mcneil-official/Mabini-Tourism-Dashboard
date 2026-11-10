@@ -74,31 +74,43 @@ function esc(value: string | number | null | undefined): string {
 // read as sea.
 const SEA_TINT = "#BCCCDC";
 
-function tileUrl(dark: boolean): string {
+const TILE_ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+const OSM_ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+
+interface TileConfig {
+  url: string;
+  attribution: string;
+  subdomains: string;
+  maxZoom: number;
+}
+
+function getTileConfig(dark: boolean): TileConfig {
   // CARTO raster tiles require an API key since Sep 2026 — without one they
   // render an "API key required" watermark. Key lives in VITE_CARTO_KEY
   // (.env local, Vercel env for deploys); absent key falls back to plain
   // OpenStreetMap so the map never breaks in any environment.
   const key = (import.meta.env.VITE_CARTO_KEY as string | undefined)?.trim();
   if (!key) {
-    return "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+    return {
+      // OSM only serves a/b/c. Using d leaves every fourth tile blank.
+      url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      attribution: OSM_ATTRIBUTION,
+      subdomains: "abc",
+      maxZoom: 19,
+    };
   }
   // Voyager (not Positron) for the light style — its water is a muted
   // blue-grey that still reads as sea, keeping the monochrome look.
-  return dark
-    ? `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${key}`
-    : `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${key}`;
-}
-
-const TILE_ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
-const OSM_ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
-
-function hasCartoKey(): boolean {
-  return Boolean(
-    (import.meta.env.VITE_CARTO_KEY as string | undefined)?.trim(),
-  );
+  return {
+    url: dark
+      ? `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${key}`
+      : `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=${key}`,
+    attribution: TILE_ATTRIBUTION,
+    subdomains: "abcd",
+    maxZoom: 20,
+  };
 }
 
 export function DiveSiteHeatmap({
@@ -188,14 +200,14 @@ export function DiveSiteHeatmap({
       attributionControl: true,
     });
 
-    const tiles = L.tileLayer(
-      tileUrl(document.documentElement.classList.contains("dark")),
-      {
-        attribution: hasCartoKey() ? TILE_ATTRIBUTION : OSM_ATTRIBUTION,
-        subdomains: "abcd",
-        maxZoom: 20,
-      },
-    ).addTo(map);
+    const initialTiles = getTileConfig(
+      document.documentElement.classList.contains("dark"),
+    );
+    const tiles = L.tileLayer(initialTiles.url, {
+      attribution: initialTiles.attribution,
+      subdomains: initialTiles.subdomains,
+      maxZoom: initialTiles.maxZoom,
+    }).addTo(map);
     tileRef.current = tiles;
     syncSeaTint(
       map,
@@ -237,10 +249,11 @@ export function DiveSiteHeatmap({
     const map = mapRef.current;
     if (!map || !ready) return;
     if (tileRef.current) map.removeLayer(tileRef.current);
-    tileRef.current = L.tileLayer(tileUrl(dark), {
-      attribution: hasCartoKey() ? TILE_ATTRIBUTION : OSM_ATTRIBUTION,
-      subdomains: "abcd",
-      maxZoom: 20,
+    const nextTiles = getTileConfig(dark);
+    tileRef.current = L.tileLayer(nextTiles.url, {
+      attribution: nextTiles.attribution,
+      subdomains: nextTiles.subdomains,
+      maxZoom: nextTiles.maxZoom,
     }).addTo(map);
     syncSeaTint(map, dark);
   }, [dark, ready]);

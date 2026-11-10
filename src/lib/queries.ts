@@ -1525,7 +1525,20 @@ export function useAuditLogsLive() {
  * created_at, tourist_id. No recipient column, so `is_read` is global across
  * the office — one staffer marking a row read clears it for everyone, which
  * is the intended "someone handled this" semantics for a shared queue.
+ *
+ * Tourist-only notifications are filtered out here. The public app still owns
+ * those rows, so they stay in the database; the TO office just never sees them.
  */
+const HIDDEN_TO_NOTIFICATION_TYPES = new Set(["eco_dive_activated"]);
+
+function isVisibleToNotification(type: unknown): boolean {
+  return !HIDDEN_TO_NOTIFICATION_TYPES.has(
+    String(type ?? "")
+      .trim()
+      .toLowerCase(),
+  );
+}
+
 export interface LiveNotificationRow {
   _dbId: string;
   title: string;
@@ -1536,22 +1549,36 @@ export interface LiveNotificationRow {
   touristId: string | null;
 }
 
+interface RawNotificationRow {
+  id: string;
+  title: string | null;
+  body: string | null;
+  type: string | null;
+  is_read: boolean | null;
+  created_at: string | null;
+  tourist_id: string | null;
+}
+
 async function fetchNotifications(): Promise<LiveNotificationRow[]> {
   const { data: rows, error } = await supabase
     .from("notifications")
     .select("id, title, body, type, is_read, created_at, tourist_id")
+    .or("type.is.null,type.neq.eco_dive_activated")
     .order("created_at", { ascending: false })
     .limit(50);
   if (error) throw error;
-  return (rows || []).map((n: any) => ({
-    _dbId: n.id,
-    title: n.title || "Notification",
-    body: n.body ?? null,
-    type: n.type ?? null,
-    isRead: n.is_read !== false,
-    createdAt: n.created_at || "",
-    touristId: n.tourist_id ?? null,
-  }));
+  const notifications = (rows as RawNotificationRow[] | null) ?? [];
+  return notifications
+    .filter((n) => isVisibleToNotification(n.type))
+    .map((n) => ({
+      _dbId: n.id,
+      title: n.title || "Notification",
+      body: n.body ?? null,
+      type: n.type ?? null,
+      isRead: n.is_read !== false,
+      createdAt: n.created_at || "",
+      touristId: n.tourist_id ?? null,
+    }));
 }
 
 export function useNotificationsLive() {
