@@ -577,14 +577,18 @@ export async function downloadManifestoImage(
   const blob = await generateManifestoImageBlob(options);
   const cleanId = (options.id || "0001").replace(/[^a-zA-Z0-9_-]/g, "");
   const fname = filename || `Passenger-Manifest-${cleanId}-${options.date || "2026"}.png`;
+  downloadBlob(blob, fname);
+}
+
+export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = fname;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   setTimeout(() => {
     if (a.parentNode) document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, 120);
+  }, 1000);
 }
