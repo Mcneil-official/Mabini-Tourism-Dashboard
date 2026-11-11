@@ -1301,7 +1301,43 @@ async function fetchEstablishments(): Promise<LiveEstablishmentRow[]> {
       creditByOperator.set(resort, (creditByOperator.get(resort) || 0) + value);
     }
   }
-  return (rows || []).map((e: any) => ({
+  // Deduplicate and consolidate rows sharing the same normalized resort name
+  const groupedByName = new Map<string, any[]>();
+  for (const row of rows || []) {
+    const key = (row.name || "").trim().toLowerCase();
+    if (!key) continue;
+    const list = groupedByName.get(key) || [];
+    list.push(row);
+    groupedByName.set(key, list);
+  }
+
+  const consolidatedList: any[] = [];
+  for (const group of groupedByName.values()) {
+    if (group.length === 1) {
+      consolidatedList.push(group[0]);
+    } else {
+      // Pick canonical: prefer active/accredited, then most recent
+      const activeRows = group.filter((r) => r.accredited !== false);
+      const canonical = activeRows.length > 0 ? activeRows[0] : group[0];
+      const merged = { ...canonical };
+
+      for (const other of group) {
+        if (!merged.location && other.location) merged.location = other.location;
+        if (!merged.email && other.email) merged.email = other.email;
+        if (!merged.phone && other.phone) merged.phone = other.phone;
+        if (!merged.website && other.website) merged.website = other.website;
+        if (!merged.facebook && other.facebook) merged.facebook = other.facebook;
+        if (!merged.description && other.description) merged.description = other.description;
+        if (!merged.image_url && other.image_url) merged.image_url = other.image_url;
+        if (!merged.business_permit_url && other.business_permit_url) merged.business_permit_url = other.business_permit_url;
+        if (!merged.pcss_url && other.pcss_url) merged.pcss_url = other.pcss_url;
+        if (!merged.dot_accreditation_url && other.dot_accreditation_url) merged.dot_accreditation_url = other.dot_accreditation_url;
+      }
+      consolidatedList.push(merged);
+    }
+  }
+
+  return consolidatedList.map((e: any) => ({
     _dbId: e.id,
     id: shortId(e.id),
     name: e.name,
@@ -1343,13 +1379,29 @@ export function useEstablishmentsLive() {
  */
 export async function setEstablishmentSuspended(
   dbId: string,
-  suspended: boolean
+  suspended: boolean,
+  establishmentName?: string
 ): Promise<void> {
-  const { error } = await supabase
-    .from("establishments")
-    .update({ accredited: !suspended })
-    .eq("id", dbId);
-  if (error) throw error;
+  const payload = { accredited: !suspended };
+  if (establishmentName && establishmentName.trim()) {
+    const { error } = await supabase
+      .from("establishments")
+      .update(payload)
+      .ilike("name", establishmentName.trim());
+    if (error) {
+      const { error: idErr } = await supabase
+        .from("establishments")
+        .update(payload)
+        .eq("id", dbId);
+      if (idErr) throw idErr;
+    }
+  } else {
+    const { error } = await supabase
+      .from("establishments")
+      .update(payload)
+      .eq("id", dbId);
+    if (error) throw error;
+  }
 }
 
 export interface NewEstablishmentFromApp {
@@ -1364,14 +1416,60 @@ export interface NewEstablishmentFromApp {
 }
 
 /**
- * Graduation write: insert the establishment row for an approved
- * application. Transfers verified business permit, PCSSD, and DOT document photo URLs.
+ * Graduation write: insert or update the establishment row for an approved
+ * application. Checks for existing establishment by case-insensitive name
+ * to prevent duplicates upon re-approval or renewal.
  */
 export async function createEstablishmentFromApplication(
   app: NewEstablishmentFromApp
 ): Promise<void> {
+  const trimmedName = app.resortName?.trim();
+  if (!trimmedName) return;
+
+  // Check if an establishment with this resort name already exists (case-insensitive)
+  const { data: existing, error: searchErr } = await supabase
+    .from("establishments")
+    .select("id, name, location, email, phone, website, business_permit_url, pcss_url, dot_accreditation_url")
+    .ilike("name", trimmedName)
+    .limit(1);
+
+  if (searchErr) {
+    console.warn("Could not check existing establishment:", searchErr);
+  }
+
+  if (existing && existing.length > 0) {
+    // Update existing establishment instead of inserting a duplicate
+    const target = existing[0];
+    const updatePayload: Record<string, any> = {
+      accredited: true,
+      name: trimmedName,
+    };
+    if (app.resortLocation) updatePayload.location = app.resortLocation;
+    if (app.touristEmail) updatePayload.email = app.touristEmail;
+    if (app.contactNumber) updatePayload.phone = app.contactNumber;
+    if (app.website) updatePayload.website = app.website;
+    if (app.business_permit_url) updatePayload.business_permit_url = app.business_permit_url;
+    if (app.pcss_url) updatePayload.pcss_url = app.pcss_url;
+    if (app.dot_accreditation_url) updatePayload.dot_accreditation_url = app.dot_accreditation_url;
+
+    // Update all matching rows if duplicates exist in DB
+    const { error } = await supabase
+      .from("establishments")
+      .update(updatePayload)
+      .ilike("name", trimmedName);
+    if (error) {
+      const { error: idErr } = await supabase
+        .from("establishments")
+        .update(updatePayload)
+        .eq("id", target.id);
+      if (idErr) throw idErr;
+    }
+    return;
+  }
+
+  // Not found: insert fresh establishment
   const { error } = await supabase.from("establishments").insert({
-    name: app.resortName,
+    name: trimmedName,
     location: app.resortLocation,
     email: app.touristEmail,
     phone: app.contactNumber,

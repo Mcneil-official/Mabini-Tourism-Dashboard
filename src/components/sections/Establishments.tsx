@@ -583,7 +583,7 @@ export function Establishments() {
       if (!(await requireLiveSession())) return;
       setOpBusy((b) => ({ ...b, [suspendTarget.id]: true }));
       try {
-        await setEstablishmentSuspended(dbId, true);
+        await setEstablishmentSuspended(dbId, true, suspendTarget.name);
         invalidateEst();
         pushAuditLog(
           `Suspended establishment ${suspendTarget.name} — ${suspendReason.trim()}`
@@ -619,7 +619,7 @@ export function Establishments() {
       if (!(await requireLiveSession())) return;
       setOpBusy((b) => ({ ...b, [est.id]: true }));
       try {
-        await setEstablishmentSuspended(dbId, false);
+        await setEstablishmentSuspended(dbId, false, est.name);
         invalidateEst();
         pushAuditLog(`Reactivated establishment ${est.name}`);
         toast.success(`${est.name} has been reactivated.`);
