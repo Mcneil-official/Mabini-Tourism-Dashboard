@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase, isSupabaseConfigured } from "./supabase";
-import { displayNationality } from "./metrics";
+import { displayNationality, formatDiverNationality } from "./metrics";
 
 /**
  * Live data layer for the TO dashboard (reads-first scope).
@@ -376,6 +376,8 @@ export interface LiveTouristRow {
   permit_to_operate_no?: string | null;
   emergency_contact_number?: string | null;
   data_privacy_consent?: boolean;
+  isDuplicate?: boolean;
+  duplicateCount?: number;
 }
 
 async function fetchTourists(): Promise<LiveTouristRow[]> {
@@ -389,6 +391,14 @@ async function fetchTourists(): Promise<LiveTouristRow[]> {
   // (Active/Suspended per 031); expiry is derived — a lapsed renewal_date
   // reads Expired even when the stored value is still Active.
   const today = new Date().toISOString().slice(0, 10);
+  const nameCounts = new Map<string, number>();
+  for (const r of rows || []) {
+    const key = (r.full_name || "").trim().toLowerCase();
+    if (key) {
+      nameCounts.set(key, (nameCounts.get(key) || 0) + 1);
+    }
+  }
+
   return (rows || []).map((t: any) => {
     const stored = String(t.status || "Active").toLowerCase();
     const renewal = dayOf(t.renewal_date ?? null);
@@ -398,6 +408,10 @@ async function fetchTourists(): Promise<LiveTouristRow[]> {
         : renewal !== "—" && renewal < today
           ? "Expired"
           : "Active";
+
+    const normKey = (t.full_name || "").trim().toLowerCase();
+    const count = normKey ? nameCounts.get(normKey) || 1 : 1;
+    const isDuplicate = count > 1;
 
     const pcssdNum =
       t.pcssd_accreditation_no ??
@@ -469,6 +483,8 @@ async function fetchTourists(): Promise<LiveTouristRow[]> {
       permit_to_operate_no: ptoNum,
       emergency_contact_number: emPhone,
       data_privacy_consent: t.data_privacy_consent ?? true,
+      isDuplicate,
+      duplicateCount: count,
     };
   });
 }
@@ -577,6 +593,7 @@ export interface LiveDiverRow {
   name: string;
   ecoId: string | null;
   isWalkIn: boolean;
+  nationality?: string | null;
 }
 
 async function fetchManifests(): Promise<LiveManifestRow[]> {
@@ -686,16 +703,70 @@ export async function fetchManifestDivers(
 ): Promise<LiveDiverRow[]> {
   const { data, error } = await supabase
     .from("manifest_divers")
-    .select("name, eco_id, is_walk_in")
+    .select("*")
     .eq("manifest_id", manifestId)
     .order("created_at", { ascending: true })
     .limit(200);
   if (error) throw error;
-  return (data || []).map((d: any) => ({
-    name: d.name,
-    ecoId: d.eco_id ?? null,
-    isWalkIn: d.is_walk_in === true,
-  }));
+  const rows = (data || []) as any[];
+
+  // Cross-reference tourist profiles to resolve real diver nationality if missing on manifest_divers
+  const touristNatMap = new Map<string, string>();
+  const needsLookup = rows.filter((d) => !d.nationality);
+  if (needsLookup.length > 0) {
+    const touristIds = [
+      ...new Set(needsLookup.map((d) => d.tourist_id).filter(Boolean)),
+    ];
+    const names = [
+      ...new Set(
+        needsLookup
+          .map((d) => (d.name ? String(d.name).trim() : ""))
+          .filter(Boolean)
+      ),
+    ];
+    try {
+      if (touristIds.length > 0) {
+        const { data: tById } = await supabase
+          .from("tourists")
+          .select("id, full_name, nationality")
+          .in("id", touristIds);
+        for (const t of (tById || []) as any[]) {
+          if (t.id && t.nationality) touristNatMap.set(`id:${t.id}`, t.nationality);
+          if (t.full_name && t.nationality) {
+            touristNatMap.set(`name:${String(t.full_name).toLowerCase().trim()}`, t.nationality);
+          }
+        }
+      }
+      if (names.length > 0) {
+        const { data: tByName } = await supabase
+          .from("tourists")
+          .select("id, full_name, nationality")
+          .in("full_name", names);
+        for (const t of (tByName || []) as any[]) {
+          if (t.full_name && t.nationality) {
+            touristNatMap.set(`name:${String(t.full_name).toLowerCase().trim()}`, t.nationality);
+          }
+        }
+      }
+    } catch {
+      // Non-blocking fallback: graceful degrade to Filipino
+    }
+  }
+
+  return rows.map((d: any) => {
+    const rawNat =
+      d.nationality ||
+      (d.tourist_id ? touristNatMap.get(`id:${d.tourist_id}`) : null) ||
+      (d.name ? touristNatMap.get(`name:${String(d.name).toLowerCase().trim()}`) : null) ||
+      "Filipino";
+
+    return {
+      name: d.name,
+      ecoId: d.eco_id ?? null,
+      isWalkIn: d.is_walk_in === true,
+      nationality: formatDiverNationality(rawNat),
+    };
+  });
 }
 
 /** Signed (1h) URL for a private-bucket receipt path. Staff-only via 030. */

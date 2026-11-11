@@ -85,6 +85,7 @@ import { useGlobalDateRange } from "@/hooks/useGlobalDateRange";
 import { pushAuditLog } from "@/lib/audit";
 import { requireLiveSession } from "@/lib/staff-auth";
 import { downloadManifestoImage, generateManifestoImageBlob } from "@/lib/manifesto-image";
+import { formatDiverNationality } from "@/lib/metrics";
 import {
   useLiveMode,
   useManifestsLive,
@@ -116,7 +117,7 @@ export function ManifestoView() {
         name: r.name,
         ecoId: r.ecoId,
         isWalkIn: r.isWalkIn,
-        nationality: "Philippines",
+        nationality: formatDiverNationality(r.nationality),
         certification: r.isWalkIn ? "Walk-in Guest" : "Certified Diver",
         municipalFeeStatus: "PAID & CLEARED",
         safetyWaiverStatus: "SIGNED",

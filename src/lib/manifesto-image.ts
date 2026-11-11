@@ -11,6 +11,7 @@
  */
 
 import { MABINI_LGU_LOGO_URI } from "@/constants/lguLogo";
+import { formatDiverNationality } from "./metrics";
 
 export interface DiverRosterItem {
   name: string;
@@ -159,7 +160,7 @@ export async function generateManifestoImageBlob(
       : [
           {
             name: "Jhon Mcneil Magtibay",
-            nationality: "Philippines",
+            nationality: "Filipino",
             ecoId: "ECO-2026-100005",
           },
         ];
@@ -518,7 +519,7 @@ export async function generateManifestoImageBlob(
       ctx.textAlign = "center";
       ctx.font = "500 13px system-ui, -apple-system, sans-serif";
       ctx.fillStyle = "#334155";
-      ctx.fillText(diver.nationality || "Philippines", xNat + wNat / 2, rowY + 25);
+      ctx.fillText(formatDiverNationality(diver.nationality), xNat + wNat / 2, rowY + 25);
 
       // Col 4: ECO ID (Blue Mono)
       ctx.textAlign = "center";

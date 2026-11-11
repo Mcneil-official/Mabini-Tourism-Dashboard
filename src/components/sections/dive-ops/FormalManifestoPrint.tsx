@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Printer, ArrowLeft, ShieldCheck, ShieldAlert } from "lucide-react";
 import { MABINI_LGU_LOGO_URI } from "@/constants/lguLogo";
+import { formatDiverNationality } from "@/lib/metrics";
 
 export interface FormalDiver {
   name: string;
@@ -92,7 +93,7 @@ export function FormalManifestoPrint({
           ...d,
           ecoId: resolvedEcoId,
           isWalkIn,
-          nationality: d.nationality || "Filipino",
+          nationality: formatDiverNationality(d.nationality),
           certification:
             d.certification ||
             (isWalkIn ? "Walk-in Registration" : "Certified Diver"),
@@ -104,6 +105,16 @@ export function FormalManifestoPrint({
 
     // Fallback diver mock count if none provided
     const count = manifest.diver_count || manifest.divers || 6;
+    const DEMO_NATIONALITIES = [
+      "Filipino",
+      "American",
+      "Japanese",
+      "German",
+      "Korean",
+      "Australian",
+      "British",
+      "Canadian",
+    ];
     const generated: FormalDiver[] = [];
     for (let i = 1; i <= count; i++) {
       generated.push({
@@ -113,7 +124,7 @@ export function FormalManifestoPrint({
             ? "Walk-in"
             : `ECO-2026-${String(1040 + i).padStart(4, "0")}`,
         isWalkIn: i % 3 === 0,
-        nationality: i % 2 === 0 ? "Philippines" : "International",
+        nationality: DEMO_NATIONALITIES[(i - 1) % DEMO_NATIONALITIES.length],
         certification: i === 1 ? "Divemaster" : "Open Water",
         municipalFeeStatus: "PAID & CLEARED",
         safetyWaiverStatus: "SIGNED",
@@ -566,7 +577,7 @@ export function FormalManifestoPrint({
                     {diver.name}
                   </div>
                   <div className="w-44 text-center font-medium shrink-0 truncate border-r border-[#C5D9ED]">
-                    {diver.nationality || "Filipino"}
+                    {formatDiverNationality(diver.nationality)}
                   </div>
                   <div className="w-52 text-center font-bold font-mono text-[#0066CC] shrink-0 truncate px-2">
                     {diver.ecoId}
