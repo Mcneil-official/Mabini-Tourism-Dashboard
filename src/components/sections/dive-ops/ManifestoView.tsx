@@ -84,7 +84,11 @@ import { usePermission } from "@/hooks/usePermission";
 import { useGlobalDateRange } from "@/hooks/useGlobalDateRange";
 import { pushAuditLog } from "@/lib/audit";
 import { requireLiveSession } from "@/lib/staff-auth";
-import { downloadManifestoImage, generateManifestoImageBlob } from "@/lib/manifesto-image";
+import {
+  downloadBlob,
+  downloadManifestoImage,
+  generateManifestoImageBlob,
+} from "@/lib/manifesto-image";
 import { formatDiverNationality } from "@/lib/metrics";
 import {
   useLiveMode,
@@ -1082,24 +1086,19 @@ function ForwardForm({
   const handleDownloadPhoto = async () => {
     if (!currentManifest) return;
     setSharing(true);
+    const tId = toast.loading("Generating selected manifesto photo…");
     try {
-      await downloadManifestoImage({
-        id: currentManifest.id,
-        operator: currentManifest.operator || "Mabini Dive Operator",
-        site: currentManifest.site || currentManifest.location || "Mabini Marine Sanctuary",
-        date: currentManifest.date || currentManifest.dive_date || new Date().toISOString().slice(0, 10),
-        divers: Number(currentManifest.divers ?? currentManifest.diver_count) || 0,
-        verified: isVerified(currentManifest),
-        boatName: (currentManifest as any).boatName || (currentManifest as any).boat_name,
-        diveType: (currentManifest as any).diveType || (currentManifest as any).dive_type,
-        maxDivers: (currentManifest as any).maxDivers || (currentManifest as any).max_divers,
-        captainName: (currentManifest as any).captainName || (currentManifest as any).captain_name,
-        instructorName: (currentManifest as any).instructorName || (currentManifest as any).instructor_name,
-      });
-      toast.success("Manifesto Photo Downloaded");
+      const blob = await getManifestBlob(currentManifest);
+      const cleanId = currentManifest.id.replace(/[^a-zA-Z0-9_-]/g, "");
+      const date = currentManifest.date || currentManifest.dive_date || "2026";
+      downloadBlob(blob, `Passenger-Manifest-${cleanId}-${date}.png`);
+      toast.success("Manifesto Photo Downloaded", { id: tId });
       pushAuditLog(`Downloaded manifesto ${currentManifest.id} photo`);
     } catch (err) {
-      toast.error("Download failed", { description: dbErrorMessage(err) });
+      toast.error("Download failed", {
+        id: tId,
+        description: dbErrorMessage(err),
+      });
     } finally {
       setSharing(false);
     }
