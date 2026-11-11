@@ -730,6 +730,107 @@ export function isDomesticNationality(
   );
 }
 
+const DIVER_DEMONYMS: Record<string, string> = {
+  philippines: "Filipino",
+  ph: "Filipino",
+  pilipinas: "Filipino",
+  filipino: "Filipino",
+  filipina: "Filipino",
+  "united states": "American",
+  "united states of america": "American",
+  usa: "American",
+  us: "American",
+  american: "American",
+  japan: "Japanese",
+  japanese: "Japanese",
+  germany: "German",
+  german: "German",
+  "south korea": "Korean",
+  korea: "Korean",
+  korean: "Korean",
+  china: "Chinese",
+  chinese: "Chinese",
+  australia: "Australian",
+  australian: "Australian",
+  canada: "Canadian",
+  canadian: "Canadian",
+  "united kingdom": "British",
+  uk: "British",
+  britain: "British",
+  british: "British",
+  england: "British",
+  france: "French",
+  french: "French",
+  italy: "Italian",
+  italian: "Italian",
+  spain: "Spanish",
+  spanish: "Spanish",
+  russia: "Russian",
+  russian: "Russian",
+  switzerland: "Swiss",
+  swiss: "Swiss",
+  sweden: "Swedish",
+  swedish: "Swedish",
+  denmark: "Danish",
+  danish: "Danish",
+  netherlands: "Dutch",
+  holland: "Dutch",
+  dutch: "Dutch",
+  norway: "Norwegian",
+  norwegian: "Norwegian",
+  taiwan: "Taiwanese",
+  taiwanese: "Taiwanese",
+  singapore: "Singaporean",
+  singaporean: "Singaporean",
+  malaysia: "Malaysian",
+  malaysian: "Malaysian",
+  indonesia: "Indonesian",
+  indonesian: "Indonesian",
+  thailand: "Thai",
+  thai: "Thai",
+  vietnam: "Vietnamese",
+  vietnamese: "Vietnamese",
+  india: "Indian",
+  indian: "Indian",
+  brazil: "Brazilian",
+  brazilian: "Brazilian",
+  mexico: "Mexican",
+  mexican: "Mexican",
+  "new zealand": "New Zealander",
+  ireland: "Irish",
+  irish: "Irish",
+  uae: "Emirati",
+  emirati: "Emirati",
+};
+
+/**
+ * Normalizes diver passenger nationality to an official demonym.
+ * Replaces country names ("Philippines" -> "Filipino", "USA" -> "American")
+ * and eliminates category placeholders ("International" -> "Filipino").
+ */
+export function formatDiverNationality(value: string | null | undefined): string {
+  if (!value) return "Filipino";
+  const trimmed = value.trim();
+  const lower = trimmed.toLowerCase();
+
+  if (
+    lower === "international" ||
+    lower === "domestic" ||
+    lower === "unknown" ||
+    lower === "n/a" ||
+    lower === "—" ||
+    lower === "-"
+  ) {
+    return "Filipino";
+  }
+
+  if (DIVER_DEMONYMS[lower]) {
+    return DIVER_DEMONYMS[lower];
+  }
+
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+}
+
 export const LEVEL_ORDER = [
   "Intro",
   "Open Water",
