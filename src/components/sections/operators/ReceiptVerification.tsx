@@ -84,6 +84,7 @@ import {
   getReceiptUrl,
   formatPeso,
   dbErrorMessage,
+  formatPurchasedPassQuantity,
 } from "@/lib/queries";
 import {
   receipts,
@@ -647,17 +648,12 @@ export function ReceiptVerification() {
                         >
                           {r.operator}
                         </button>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
-                            {r.passLabel || "Dive Pass"}
-                          </Badge>
-                        </div>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="font-display font-bold leading-tight">{r.amount}</div>
+                      <div className="font-display font-bold leading-tight tabular-nums">{r.amount}</div>
                       <div className="text-[11px] font-semibold text-primary">
-                        {r.passCount ?? 1} {(r.passCount ?? 1) === 1 ? "pass" : "passes"}
+                        {formatPurchasedPassQuantity(r.passCount, r.passType, r.passLabel)}
                       </div>
                     </div>
                   </div>
@@ -725,7 +721,7 @@ export function ReceiptVerification() {
       <Dialog open={!!viewing} onOpenChange={(o) => !o && setViewing(null)}>
         <DialogContent className="w-[min(92vw,24rem)] sm:w-[min(92vw,28rem)] max-w-none max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Dive Pass Details — Receipt {viewing?.id}</DialogTitle>
+            <DialogTitle>Payment Details — Receipt {viewing?.id}</DialogTitle>
           </DialogHeader>
           {viewing && (
             <div className="space-y-4">
@@ -765,18 +761,17 @@ export function ReceiptVerification() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                 <Field label="Operator" value={viewing.operator} />
                 <Field label="Reference #" value={viewing.ref} />
-                <Field label="Pass Package" value={viewing.passLabel || "Dive Pass"} />
                 <Field
-                  label="Passes Bought"
+                  label="Purchased Quantity"
                   value={
-                    <span className="font-semibold text-primary">
-                      {viewing.passCount ?? 1} {(viewing.passCount ?? 1) === 1 ? "pass" : "passes"}
+                    <span className="font-medium text-foreground">
+                      Quantity: {formatPurchasedPassQuantity(viewing.passCount, viewing.passType, viewing.passLabel)}
                     </span>
                   }
                 />
                 <Field
                   label="Total Amount"
-                  value={<span className="font-bold text-foreground">{viewing.amount}</span>}
+                  value={<span className="font-bold text-foreground tabular-nums">{viewing.amount}</span>}
                 />
                 <Field
                   label="Price Per Pass"

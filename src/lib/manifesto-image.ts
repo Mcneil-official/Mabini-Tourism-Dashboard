@@ -229,10 +229,10 @@ export async function generateManifestoImageBlob(
   ctx.font = "bold 13.5px system-ui, -apple-system, sans-serif";
   ctx.fillText("PROVINCE OF BATANGAS • MUNICIPALITY OF MABINI", textX, 68);
 
-  // "MUNICIPAL TOURISM & MARITIME SAFETY OFFICE"
+  // "MUNICIPAL TOURISM OFFICE"
   ctx.fillStyle = "#0D3B66";
   ctx.font = "bold 12px system-ui, -apple-system, sans-serif";
-  ctx.fillText("MUNICIPAL TOURISM & MARITIME SAFETY OFFICE", textX, 88);
+  ctx.fillText("MUNICIPAL TOURISM OFFICE", textX, 88);
 
   // "Operating Resort: <Operator>"
   ctx.fillStyle = "#0066CC";
@@ -543,7 +543,7 @@ export async function generateManifestoImageBlob(
   ctx.fillStyle = "#64748B";
   ctx.font = "600 11.5px system-ui, -apple-system, sans-serif";
   ctx.fillText(
-    "Official Passenger Manifest • Mabini Municipal Tourism & Maritime Safety Office",
+    "Official Passenger Manifest • Mabini Municipal Tourism Office",
     cardX + 4,
     footerTop + 24
   );

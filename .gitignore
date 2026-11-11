@@ -29,3 +29,6 @@ dist/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Internal tooling
+.aistudio/

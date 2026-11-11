@@ -4,10 +4,10 @@ Project guidance for AI coding assistants.
 
 ## Commands
 
-- Dev server: `bun run dev` (port 8080)
-- Typecheck: `bunx tsc --noEmit`
-- Build: `bun run build`
-- Lint: `bun run lint`
+- Dev server: `npm run dev` (port 3000)
+- Typecheck: `npx tsc --noEmit`
+- Build: `npm run build`
+- Lint: `npm run lint`
 
 ## Conventions
 

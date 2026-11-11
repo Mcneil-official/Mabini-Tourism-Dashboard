@@ -640,6 +640,7 @@ export const receipts: Array<{
   rejectReason?: string;
   passLabel?: string;
   passCount?: number;
+  passType?: string;
 }> = [
   {
     id: "RC-88431",
@@ -651,6 +652,7 @@ export const receipts: Array<{
     status: "Pending",
     passLabel: "10-Dive Bundle",
     passCount: 10,
+    passType: "one-day",
   },
   {
     id: "RC-88432",
@@ -662,6 +664,7 @@ export const receipts: Array<{
     status: "Pending",
     passLabel: "5-Dive Package",
     passCount: 5,
+    passType: "one-day",
   },
   {
     id: "RC-88433",
@@ -673,6 +676,7 @@ export const receipts: Array<{
     status: "Pending",
     passLabel: "20-Dive Bulk Pack",
     passCount: 20,
+    passType: "one-day",
   },
   {
     id: "RC-88434",
@@ -684,6 +688,7 @@ export const receipts: Array<{
     status: "Approved",
     passLabel: "2-Dive Weekend Pass",
     passCount: 2,
+    passType: "one-day",
   },
   {
     id: "RC-88435",
@@ -695,6 +700,7 @@ export const receipts: Array<{
     status: "Approved",
     passLabel: "30-Dive Commercial Pack",
     passCount: 30,
+    passType: "one-day",
   },
   {
     id: "RC-88436",
@@ -706,6 +712,7 @@ export const receipts: Array<{
     status: "Rejected",
     passLabel: "15-Dive Group Bundle",
     passCount: 15,
+    passType: "one-day",
   },
   {
     id: "RC-88437",
@@ -717,6 +724,7 @@ export const receipts: Array<{
     status: "Pending",
     passLabel: "6-Dive Package",
     passCount: 6,
+    passType: "one-day",
   },
   {
     id: "RC-88438",
@@ -728,6 +736,7 @@ export const receipts: Array<{
     status: "Pending",
     passLabel: "10-Dive Bundle",
     passCount: 10,
+    passType: "one-day",
   },
   {
     id: "RC-88439",
@@ -739,6 +748,7 @@ export const receipts: Array<{
     status: "Approved",
     passLabel: "12-Dive Season Pass",
     passCount: 12,
+    passType: "one-day",
   },
   {
     id: "RC-88440",
@@ -750,6 +760,7 @@ export const receipts: Array<{
     status: "Approved",
     passLabel: "4-Dive Mini Pass",
     passCount: 4,
+    passType: "one-day",
   },
   {
     id: "RC-88441",
@@ -761,6 +772,7 @@ export const receipts: Array<{
     status: "Pending",
     passLabel: "10-Dive Bundle",
     passCount: 10,
+    passType: "one-day",
   },
   {
     id: "RC-88442",
@@ -772,6 +784,7 @@ export const receipts: Array<{
     status: "Approved",
     passLabel: "20-Dive Bulk Pack",
     passCount: 20,
+    passType: "one-day",
   },
   {
     id: "RC-88443",
@@ -783,6 +796,7 @@ export const receipts: Array<{
     status: "Rejected",
     passLabel: "5-Dive Package",
     passCount: 5,
+    passType: "one-day",
   },
   {
     id: "RC-88444",
@@ -794,6 +808,7 @@ export const receipts: Array<{
     status: "Pending",
     passLabel: "8-Dive Explorer Pass",
     passCount: 8,
+    passType: "one-day",
   },
   {
     id: "RC-88445",
@@ -805,6 +820,7 @@ export const receipts: Array<{
     status: "Approved",
     passLabel: "15-Dive Group Bundle",
     passCount: 15,
+    passType: "one-day",
   },
   {
     id: "RC-88446",

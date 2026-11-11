@@ -312,7 +312,7 @@ export function FormalManifestoPrint({
                   PROVINCE OF BATANGAS &bull; MUNICIPALITY OF MABINI
                 </div>
                 <div className="text-[12px] font-bold text-[#0D3B66] tracking-[0.8px] mt-0.5 uppercase">
-                  Municipal Tourism &amp; Maritime Safety Office
+                  Municipal Tourism Office
                 </div>
                 <div className="text-[11.5px] font-semibold text-[#0066CC] mt-1 truncate">
                   Operating Resort:{" "}

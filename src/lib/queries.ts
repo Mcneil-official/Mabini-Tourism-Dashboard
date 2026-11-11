@@ -228,6 +228,40 @@ export interface LiveReceiptRow {
   passType?: string;
 }
 
+export function formatPurchasedPassQuantity(
+  passCount: number | null | undefined,
+  passType?: string | null,
+  passLabel?: string | null
+): string {
+  const count =
+    typeof passCount === "number" && !isNaN(passCount) && passCount > 0
+      ? passCount
+      : 1;
+  const isSingular = count === 1;
+
+  const typeStr = (passType || "").toLowerCase().trim();
+  const labelStr = (passLabel || "").toLowerCase().trim();
+
+  let tier = "One-Day";
+  if (typeStr.includes("annual") || labelStr.includes("annual")) {
+    tier = "Annual";
+  } else if (
+    typeStr.includes("one-day") ||
+    typeStr.includes("daily") ||
+    labelStr.includes("day") ||
+    labelStr.includes("daily")
+  ) {
+    tier = "One-Day";
+  } else if (typeStr.includes("multi-day") || labelStr.includes("multi-day")) {
+    tier = "Multi-Day";
+  } else if (typeStr) {
+    tier = passType!.charAt(0).toUpperCase() + passType!.slice(1);
+  }
+
+  const noun = isSingular ? "Pass" : "Passes";
+  return `${count} ${tier} ${noun}`;
+}
+
 async function fetchReceipts(): Promise<LiveReceiptRow[]> {
   const { data: txs, error } = await supabase
     .from("payment_transactions")
