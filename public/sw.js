@@ -62,29 +62,15 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 2. HTML navigation requests: Network-first, fallback to cache, then offline.html
+  // 2. HTML navigation requests: Network-first, fallback to offline.html
+  // Do NOT cache dynamic navigation responses to prevent caching authenticated
+  // staff views or sensitive dashboard data to disk.
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          if (response && response.status === 200) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        })
-        .catch(async () => {
-          const cachedResponse = await caches.match(request);
-          if (cachedResponse) return cachedResponse;
-
-          // Try returning cached root app shell
-          const cachedShell = await caches.match("/");
-          if (cachedShell) return cachedShell;
-
-          // Fallback to offline page
-          const offlinePage = await caches.match("/offline.html");
-          return offlinePage || Response.error();
-        })
+      fetch(request).catch(async () => {
+        const offlinePage = await caches.match("/offline.html");
+        return offlinePage || Response.error();
+      })
     );
     return;
   }

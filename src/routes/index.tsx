@@ -70,6 +70,9 @@ import {
   useLiveRealtime,
   useLiveMode,
   useDiveSitesLive,
+  useTouristsLive,
+  useOperatorApplicationsLive,
+  useReceiptsLive,
 } from "@/lib/queries";
 import { toSiteView } from "@/lib/diveTaxonomy";
 import { tourists, operatorApps, receipts } from "@/lib/mock-data";
@@ -270,11 +273,46 @@ function DashboardShell({
   const { search, setFilters } = useFilters();
   const [searchOpen, setSearchOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const isLive = useLiveMode();
   const liveSitesShell = useDiveSitesLive();
+  const liveTourists = useTouristsLive();
+  const liveApps = useOperatorApplicationsLive();
+  const liveReceipts = useReceiptsLive();
+
   const paletteSites = useMemo(
     () => (liveSitesShell.data ?? []).map(toSiteView),
     [liveSitesShell.data],
   );
+
+  const paletteTourists = useMemo(() => {
+    if (!isLive) return tourists;
+    return (liveTourists.data ?? []).map((t) => ({
+      id: t.id,
+      name: t.name,
+      nationality: t.nationality || "Filipino",
+      level: t.level || "—",
+    }));
+  }, [isLive, liveTourists.data]);
+
+  const paletteOperators = useMemo(() => {
+    if (!isLive) return operatorApps;
+    return (liveApps.data ?? []).map((o) => ({
+      id: o.id,
+      name: o.name,
+      owner: o.owner,
+      status: o.status,
+    }));
+  }, [isLive, liveApps.data]);
+
+  const paletteReceipts = useMemo(() => {
+    if (!isLive) return receipts;
+    return (liveReceipts.data ?? []).map((r) => ({
+      id: r.id,
+      operator: r.operator,
+      ref: r.ref,
+      amount: r.amount,
+    }));
+  }, [isLive, liveReceipts.data]);
   const { role, canAdmin } = useRole();
   const { theme, toggle } = useTheme();
   const section = search.section;
@@ -568,7 +606,7 @@ function DashboardShell({
         <CommandList>
           <CommandEmpty>No results found.</CommandEmpty>
           <CommandGroup heading="Tourists">
-            {tourists.map((t) => (
+            {paletteTourists.map((t) => (
               <CommandItem
                 key={t.id}
                 value={`tourist ${t.name} ${t.id} ${t.nationality} ${t.level}`}
@@ -585,7 +623,7 @@ function DashboardShell({
             ))}
           </CommandGroup>
           <CommandGroup heading="Operators">
-            {operatorApps.map((o) => (
+            {paletteOperators.map((o) => (
               <CommandItem
                 key={o.id}
                 value={`operator ${o.name} ${o.owner} ${o.id} ${o.status}`}
@@ -606,7 +644,7 @@ function DashboardShell({
             ))}
           </CommandGroup>
           <CommandGroup heading="Receipts">
-            {receipts.map((r) => (
+            {paletteReceipts.map((r) => (
               <CommandItem
                 key={r.id}
                 value={`receipt ${r.operator} ${r.ref} ${r.id} ${r.amount}`}

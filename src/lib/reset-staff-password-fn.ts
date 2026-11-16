@@ -111,7 +111,7 @@ export const resetStaffPassword = createServerFn({ method: "POST" })
     // 2. Resolve the target. Missing row = removed (delete cascades both sides).
     const { data: target, error: targetError } = await admin
       .from("to_staff")
-      .select("id, email, full_name, is_active")
+      .select("id, email, full_name, is_active, must_change_password")
       .eq("id", data.userId)
       .maybeSingle();
     if (targetError) {
@@ -131,33 +131,13 @@ export const resetStaffPassword = createServerFn({ method: "POST" })
     }
 
     const isSelf = caller.id === data.userId;
+    const prevFlag =
+      (target as { must_change_password?: boolean }).must_change_password ??
+      false;
 
-    // 3. Write the new password into auth.users (auto-confirmed account).
-    const { error: updateError } = await admin.auth.admin.updateUserById(
-      data.userId,
-      { password: data.newPassword },
-    );
-    if (updateError) {
-      const msg = updateError.message;
-      if (/password/i.test(msg)) return fail("weak_password", msg);
-      return fail("failed", `Could not set the new password: ${msg}`);
-    }
-
-    // 4. Revoke the target's other sessions when resetting someone else — a
-    // password the target no longer knows must not keep any session alive.
-    // Signing out everyone would drop the caller mid-action on a self-reset,
-    // so that variant is skipped.
-    if (!isSelf) {
-      try {
-        await admin.auth.admin.signOut(data.userId, "others");
-      } catch {
-        /* best-effort: the forced password change below still closes the
-           window on next login */
-      }
-    }
-
-    // 5. Flag for forced change (target != caller), or clear it (self-reset —
-    // the admin is already signed in and chose the password knowingly).
+    // 3. Arm the forced-change flag first (target != caller) in to_staff.
+    // Setting this before Auth ensures an account is never assigned a new
+    // password without the required gate being actively armed.
     const { error: flagError } = await admin
       .from("to_staff")
       .update({ must_change_password: !isSelf })
@@ -165,8 +145,40 @@ export const resetStaffPassword = createServerFn({ method: "POST" })
     if (flagError) {
       return fail(
         "failed",
-        `Password set but account flagging failed: ${flagError.message}`,
+        `Could not arm password change requirement: ${flagError.message}`,
       );
+    }
+
+    // 4. Write the new password into auth.users (auto-confirmed account).
+    const { error: updateError } = await admin.auth.admin.updateUserById(
+      data.userId,
+      { password: data.newPassword },
+    );
+    if (updateError) {
+      // Revert the flag to its previous state if updating the password failed
+      try {
+        await admin
+          .from("to_staff")
+          .update({ must_change_password: prevFlag })
+          .eq("id", data.userId);
+      } catch (revertErr) {
+        console.error("Failed to revert must_change_password flag:", revertErr);
+      }
+
+      const msg = updateError.message;
+      if (/password/i.test(msg)) return fail("weak_password", msg);
+      return fail("failed", `Could not set the new password: ${msg}`);
+    }
+
+    // 5. Revoke the target's other sessions when resetting someone else — a
+    // password the target no longer knows must not keep any session alive.
+    if (!isSelf) {
+      try {
+        await admin.auth.admin.signOut(data.userId, "others");
+      } catch {
+        /* best-effort: the forced password change gate still closes the
+           window on next login */
+      }
     }
 
     return {

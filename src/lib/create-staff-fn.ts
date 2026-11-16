@@ -156,7 +156,15 @@ export const createStaffAccount = createServerFn({ method: "POST" })
       role: data.role,
     });
     if (linkError) {
-      return fail("failed", `Account created but staff linking failed: ${linkError.message}`);
+      // Rollback newly minted auth user to keep staff creation atomic
+      if (created?.user?.id) {
+        try {
+          await admin.auth.admin.deleteUser(created.user.id);
+        } catch (cleanupErr) {
+          console.error("Failed to clean up orphaned auth user after link error:", cleanupErr);
+        }
+      }
+      return fail("failed", `Staff linking failed: ${linkError.message}. Auth user creation was rolled back.`);
     }
     return {
       ok: true,

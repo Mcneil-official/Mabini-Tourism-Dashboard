@@ -44,7 +44,9 @@ export function useLiveList<TLive, TDemo>(
   usingDemo: boolean;
 } {
   const isLoading = isLive && query.isPending;
-  const usingDemo = !isLive || (query.isError && query.data === undefined);
+  // Truth in data: live mode never masks query failures by showing fake demo rows.
+  // Demo rows are strictly reserved for when live mode is disabled (!isLive).
+  const usingDemo = !isLive;
   return {
     rows: usingDemo ? demoRows : (query.data ?? []),
     isLoading,
@@ -153,7 +155,9 @@ export async function getTouristContact(
 async function fetchOperatorApplications(): Promise<LiveAppRow[]> {
   const { data: apps, error } = await supabase
     .from("operator_applications")
-    .select("*")
+    .select(
+      "id, tourist_id, resort_name, resort_location, contact_number, business_permit_url, pcss_url, dot_accreditation_url, website, role, status, rejection_reason, created_at"
+    )
     .order("created_at", { ascending: false })
     .limit(200);
   if (error) throw error;
@@ -265,7 +269,9 @@ export function formatPurchasedPassQuantity(
 async function fetchReceipts(): Promise<LiveReceiptRow[]> {
   const { data: txs, error } = await supabase
     .from("payment_transactions")
-    .select("*")
+    .select(
+      "id, dive_pass_inventory_id, operator_id, reference_number, amount, status, rejection_reason, receipt_image_url, created_at"
+    )
     .order("created_at", { ascending: false })
     .limit(200);
   if (error) throw error;
@@ -383,7 +389,9 @@ export interface LiveTouristRow {
 async function fetchTourists(): Promise<LiveTouristRow[]> {
   const { data: rows, error } = await supabase
     .from("tourists")
-    .select("*")
+    .select(
+      "id, full_name, email, nationality, certification_level, status, renewal_date, date_accredited, created_at, birthdate, sex, emergency_contact, emergency_phone, id_type, id_number, id_image_url, data_privacy_consent"
+    )
     .order("created_at", { ascending: false })
     .limit(500);
   if (error) throw error;
@@ -703,7 +711,9 @@ export async function fetchManifestDivers(
 ): Promise<LiveDiverRow[]> {
   const { data, error } = await supabase
     .from("manifest_divers")
-    .select("*")
+    .select(
+      "id, manifest_id, tourist_id, name, full_name, nationality, level, certification_level, created_at"
+    )
     .eq("manifest_id", manifestId)
     .order("created_at", { ascending: true })
     .limit(200);
@@ -1177,7 +1187,9 @@ export interface LiveSiteRow {
 async function fetchDiveSites(): Promise<LiveSiteRow[]> {
   const { data: sites, error } = await supabase
     .from("dive_sites")
-    .select("*")
+    .select(
+      "id, code, name, barangay, depth_range, current, difficulty, status, types, coordinates, created_at, photo_url"
+    )
     .order("name", { ascending: true })
     .limit(500);
   if (error) throw error;
@@ -1402,7 +1414,9 @@ function barangayOf(location: string | null): string {
 async function fetchEstablishments(): Promise<LiveEstablishmentRow[]> {
   const { data: rows, error } = await supabase
     .from("establishments")
-    .select("*")
+    .select(
+      "id, name, location, email, phone, website, facebook, description, image_url, business_permit_url, pcss_url, dot_accreditation_url, accredited, created_at"
+    )
     .order("created_at", { ascending: false })
     .limit(200);
   if (error) throw error;
@@ -2015,7 +2029,9 @@ export function statusOf(
 async function fetchAnnouncements(): Promise<LiveAnnouncementRow[]> {
   const { data, error } = await supabase
     .from("announcements")
-    .select("*")
+    .select(
+      "id, title, body, image_url, active, priority, start_date, end_date, event_start_date, event_end_date, created_at"
+    )
     .order("priority", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(100);
