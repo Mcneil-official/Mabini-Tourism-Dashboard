@@ -6,6 +6,13 @@ import {
   Pencil,
   Ticket,
   AlertCircle,
+  QrCode,
+  Upload,
+  Image as ImageIcon,
+  Copy,
+  Check,
+  Loader2,
+  Trash2,
 } from "lucide-react";
 import { ReceiptVerification } from "./operators/ReceiptVerification";
 import { usePermission } from "@/hooks/usePermission";
@@ -26,13 +33,17 @@ import {
   useInventoryLive,
   useTouristsLive,
   usePassPricingLive,
+  usePaymentConfigLive,
   useInvalidateLive,
   updatePassPrice,
+  updatePaymentConfig,
+  uploadPaymentQrCode,
   validatePassPrice,
   formatPeso,
   bucketByMonth,
   dbErrorMessage,
   type LivePriceRow,
+  type PaymentConfig,
 } from "@/lib/queries";
 import { requireLiveSession } from "@/lib/staff-auth";
 import { toast } from "sonner";
@@ -465,6 +476,364 @@ export function PassPricingEditor() {
         rows={rows}
         open={open}
         onClose={() => setOpen(false)}
+        onSaved={invalidateLive}
+      />
+    </>
+  );
+}
+
+/**
+ * Configuration dialog for municipal GCash payment details and QR code.
+ * Allows Tourism Office staff and Superadmins to upload the official QR code,
+ * update the recipient name, and edit the GCash phone number.
+ */
+function PaymentConfigDialog({
+  open,
+  onClose,
+  config,
+  onSaved,
+}: {
+  open: boolean;
+  onClose: () => void;
+  config?: PaymentConfig;
+  onSaved: () => void;
+}) {
+  const [accountName, setAccountName] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isBusy, setIsBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Seed form when dialog opens or config loads
+  useEffect(() => {
+    if (!open) return;
+    setAccountName(config?.account_name || "Municipality of Mabini - Tourism");
+    setAccountNumber(config?.account_number || "");
+    setQrCodeUrl(config?.qr_code_url ?? null);
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setIsBusy(false);
+    setError(null);
+    setCopied(false);
+  }, [open, config]);
+
+  // Clean up blob URL preview when component unmounts or file changes
+  useEffect(() => {
+    return () => {
+      if (previewUrl && previewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  const handleFileChange = (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Please select an image file (PNG, JPG, or WEBP).");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image file size must be less than 5MB.");
+      return;
+    }
+
+    if (previewUrl && previewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    setError(null);
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const handleRemoveQr = () => {
+    if (previewUrl && previewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setQrCodeUrl(null);
+  };
+
+  const handleCopyTest = async () => {
+    const text = accountNumber.trim();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      toast.success("GCash number copied", {
+        description: `Operators copying will receive: "${text}"`,
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy to clipboard");
+    }
+  };
+
+  const handleSave = async () => {
+    const trimmedName = accountName.trim();
+    const trimmedNumber = accountNumber.trim();
+
+    if (!trimmedName) {
+      setError("Official Account Name is required.");
+      return;
+    }
+    if (!trimmedNumber) {
+      setError("Official GCash Number is required.");
+      return;
+    }
+
+    setIsBusy(true);
+    setError(null);
+
+    try {
+      if (!(await requireLiveSession())) {
+        setIsBusy(false);
+        return;
+      }
+
+      let finalQrUrl = qrCodeUrl;
+
+      // Upload newly picked file if present
+      if (selectedFile) {
+        try {
+          finalQrUrl = await uploadPaymentQrCode(selectedFile);
+        } catch (uploadErr) {
+          const raw = dbErrorMessage(uploadErr);
+          setError(`Failed to upload QR Code image: ${raw}`);
+          setIsBusy(false);
+          return;
+        }
+      }
+
+      await updatePaymentConfig({
+        id: config?.id,
+        account_name: trimmedName,
+        account_number: trimmedNumber,
+        qr_code_url: finalQrUrl,
+      });
+
+      pushAuditLog("payment_config_update", "payment_config");
+      onSaved();
+      toast.success("Payment details updated", {
+        description: "Official GCash details and QR code are now updated in the operator app.",
+      });
+      onClose();
+    } catch (saveErr) {
+      const raw = dbErrorMessage(saveErr);
+      if (/row-level security|permission denied|not authorized/i.test(raw)) {
+        setError("Only authorized Tourism Office staff and Superadmins can update payment details.");
+      } else {
+        setError(raw || "Failed to save payment configuration.");
+      }
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const displayQr = previewUrl || qrCodeUrl;
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => (!o && !isBusy ? onClose() : null)}>
+      <DialogContent className="sm:max-w-md max-w-[95vw] p-6 max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-primary/10 text-primary">
+              <QrCode className="size-5" />
+            </div>
+            <div>
+              <DialogTitle className="text-lg font-semibold">
+                Payment Details & QR Code
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                Official GCash recipient info & QR code shown to operators when purchasing passes.
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          {error && (
+            <div className="p-3 text-xs bg-destructive/10 border border-destructive/20 text-destructive rounded-lg flex items-start gap-2">
+              <AlertCircle className="size-4 shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* QR Code Upload & Preview */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-foreground uppercase tracking-wider block">
+              Official GCash QR Code
+            </label>
+            <div className="p-3 rounded-lg border border-border bg-card/50 flex flex-col items-center gap-3 text-center">
+              {displayQr ? (
+                <div className="relative group">
+                  <div className="p-2 bg-white rounded-lg border shadow-sm">
+                    <img
+                      src={displayQr}
+                      alt="GCash QR Code"
+                      className="size-44 object-contain rounded"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    className="absolute -top-2 -right-2 size-6 rounded-full shadow-md"
+                    onClick={handleRemoveQr}
+                    title="Remove QR code"
+                  >
+                    <Trash2 className="size-3" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="size-40 border-2 border-dashed border-muted-foreground/30 rounded-lg flex flex-col items-center justify-center p-4 text-muted-foreground bg-muted/20">
+                  <ImageIcon className="size-8 stroke-[1.5] mb-2 opacity-60" />
+                  <span className="text-xs font-medium">No QR Code set</span>
+                  <span className="text-[10px] text-muted-foreground/80 mt-1">
+                    Upload an official GCash QR image
+                  </span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                <label className="cursor-pointer">
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="sr-only"
+                    onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
+                    disabled={isBusy}
+                  />
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted shadow-sm transition-colors">
+                    <Upload className="size-3.5 text-primary" />
+                    {displayQr ? "Replace QR Image" : "Upload QR Image"}
+                  </span>
+                </label>
+                {selectedFile && (
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium truncate max-w-[150px]">
+                    New file selected
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Square PNG, JPG, or WEBP up to 5MB. Must be crisp and scannable.
+              </p>
+            </div>
+          </div>
+
+          {/* Account Name */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-foreground uppercase tracking-wider block">
+              Official Recipient / Account Name
+            </label>
+            <Input
+              value={accountName}
+              onChange={(e) => setAccountName(e.target.value)}
+              placeholder="e.g. Municipality of Mabini - Tourism"
+              disabled={isBusy}
+              className="text-sm"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Shown to operators as the verified recipient name.
+            </p>
+          </div>
+
+          {/* GCash Number */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-foreground uppercase tracking-wider block">
+              GCash Mobile Number
+            </label>
+            <div className="flex gap-2">
+              <Input
+                value={accountNumber}
+                onChange={(e) => setAccountNumber(e.target.value)}
+                placeholder="e.g. 0917 123 4567"
+                disabled={isBusy}
+                className="text-sm font-mono"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCopyTest}
+                disabled={!accountNumber.trim() || isBusy}
+                title="Test 1-tap copy"
+                className="shrink-0 px-3 text-xs"
+              >
+                {copied ? (
+                  <>
+                    <Check className="size-3.5 mr-1 text-emerald-600" /> Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="size-3.5 mr-1 text-muted-foreground" /> Test
+                  </>
+                )}
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Operators can tap to copy this number directly in the app.
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onClose}
+            disabled={isBusy}
+            className="text-xs"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            className="gradient-primary text-primary-foreground text-xs"
+            onClick={handleSave}
+            disabled={isBusy}
+          >
+            {isBusy ? (
+              <>
+                <Loader2 className="size-3.5 mr-1.5 animate-spin" /> Saving...
+              </>
+            ) : (
+              "Save Changes"
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function PaymentConfigEditor() {
+  const { canAct, canAdmin } = usePermission();
+  const paymentConfigQuery = usePaymentConfigLive();
+  const invalidateLive = useInvalidateLive();
+  const [open, setOpen] = useState(false);
+
+  // Accessible to authenticated staff and superadmins
+  if (!canAct && !canAdmin) return null;
+
+  return (
+    <>
+      <Button
+        variant="outline"
+        className="border-border hover:bg-muted whitespace-nowrap"
+        onClick={() => setOpen(true)}
+        disabled={paymentConfigQuery.isLoading}
+      >
+        <QrCode className="size-4 mr-1.5 text-primary" /> Payment Details / QR
+      </Button>
+      <PaymentConfigDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        config={paymentConfigQuery.data}
         onSaved={invalidateLive}
       />
     </>

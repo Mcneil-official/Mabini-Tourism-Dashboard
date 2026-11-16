@@ -726,4 +726,4 @@ export { ManifestoView } from "@/components/sections/dive-ops/ManifestoView";
 export { DiveSiteMgmt } from "@/components/sections/dive-ops/DiveSiteMgmt";
 export { OperatorAnalytics } from "@/components/sections/analytics/OperatorAnalytics";
 export { Reports } from "@/components/sections/analytics/Reports";
-export { PassPricingEditor } from "@/components/sections/DivePassPage";
+export { PassPricingEditor, PaymentConfigEditor } from "@/components/sections/DivePassPage";

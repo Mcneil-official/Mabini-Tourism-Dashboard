@@ -1026,6 +1026,133 @@ export function formatPeso(value: number): string {
   })}`;
 }
 
+/* ------------------------------ PAYMENT CONFIG ------------------------------ */
+
+export interface PaymentConfig {
+  id?: string;
+  account_name: string;
+  account_number: string;
+  qr_code_url: string | null;
+  updated_at?: string;
+}
+
+const DEFAULT_PAYMENT_CONFIG: PaymentConfig = {
+  account_name: "Municipality of Mabini - Tourism",
+  account_number: "0917-000-0000",
+  qr_code_url: null,
+};
+
+async function fetchPaymentConfig(): Promise<PaymentConfig> {
+  const { data, error } = await supabase
+    .from("payment_config")
+    .select("id, account_name, account_number, qr_code_url, updated_at")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("Could not fetch payment_config, using default", error);
+    return DEFAULT_PAYMENT_CONFIG;
+  }
+
+  if (!data) return DEFAULT_PAYMENT_CONFIG;
+
+  return {
+    id: data.id,
+    account_name: data.account_name || DEFAULT_PAYMENT_CONFIG.account_name,
+    account_number: data.account_number || "",
+    qr_code_url: data.qr_code_url ?? null,
+    updated_at: data.updated_at,
+  };
+}
+
+export function usePaymentConfigLive() {
+  return useQuery({
+    queryKey: ["live", "payment_config"],
+    queryFn: fetchPaymentConfig,
+    enabled: isSupabaseConfigured,
+    staleTime: 30_000,
+    retry: 1,
+  });
+}
+
+/**
+ * Uploads a new municipal GCash QR image to Supabase Storage.
+ * Tries the 'payment-assets' public bucket first, falling back to 'operator_uploads' if needed.
+ */
+export async function uploadPaymentQrCode(file: File): Promise<string> {
+  const ext = file.name.split(".").pop()?.toLowerCase() || "png";
+  const filename = `mabini-gcash-qr-${Date.now()}.${ext}`;
+  const path = `qr-codes/${filename}`;
+
+  const contentType = file.type || `image/${ext}`;
+  const { error: primaryErr } = await supabase.storage
+    .from("payment-assets")
+    .upload(path, file, { contentType, upsert: true });
+
+  if (!primaryErr) {
+    const { data } = supabase.storage.from("payment-assets").getPublicUrl(path);
+    return data.publicUrl;
+  }
+
+  // Fallback bucket
+  const fallbackPath = `payment_qr/${filename}`;
+  const { error: fallbackErr } = await supabase.storage
+    .from("operator_uploads")
+    .upload(fallbackPath, file, { contentType, upsert: true });
+
+  if (fallbackErr) {
+    throw primaryErr || fallbackErr;
+  }
+
+  const { data } = supabase.storage
+    .from("operator_uploads")
+    .getPublicUrl(fallbackPath);
+  return data.publicUrl;
+}
+
+/**
+ * Persists updated payment configuration (account name, GCash number, and QR code image URL).
+ */
+export async function updatePaymentConfig(
+  config: Partial<PaymentConfig> & { account_name: string; account_number: string }
+): Promise<void> {
+  const payload = {
+    account_name: config.account_name.trim(),
+    account_number: config.account_number.trim(),
+    qr_code_url: config.qr_code_url ?? null,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (config.id) {
+    const { error } = await supabase
+      .from("payment_config")
+      .update(payload)
+      .eq("id", config.id);
+    if (error) throw error;
+  } else {
+    // Check if an existing row exists to update, or insert
+    const { data: existing } = await supabase
+      .from("payment_config")
+      .select("id")
+      .limit(1)
+      .maybeSingle();
+
+    if (existing?.id) {
+      const { error } = await supabase
+        .from("payment_config")
+        .update(payload)
+        .eq("id", existing.id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase
+        .from("payment_config")
+        .insert([payload]);
+      if (error) throw error;
+    }
+  }
+}
+
 /* ------------------------------ DIVE SITES ------------------------------ */
 
 export interface LiveSiteRow {
@@ -2217,6 +2344,13 @@ export function useLiveRealtime() {
         { event: "*", schema: "public", table: "pass_pricing" },
         () => {
           qc.invalidateQueries({ queryKey: ["live", "pass_pricing"] });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "payment_config" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["live", "payment_config"] });
         }
       )
       .on(

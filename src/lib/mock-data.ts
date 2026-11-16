@@ -78,6 +78,8 @@ export interface MockTourist {
   pto_number?: string | null;
   pto_url?: string | null;
   data_privacy_consent?: boolean;
+  isDuplicate?: boolean;
+  duplicateCount?: number;
 }
 
 export const tourists: Array<MockTourist> = [

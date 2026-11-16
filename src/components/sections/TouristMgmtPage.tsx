@@ -1629,7 +1629,20 @@ export function TouristMgmtPage({ session }: { session?: StaffSession | null }) 
                   <TableCell className="font-mono text-xs text-muted-foreground">
                     {t.id}
                   </TableCell>
-                  <TableCell className="font-medium">{t.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <span>{t.name}</span>
+                      {t.isDuplicate && (
+                        <Badge
+                          variant="outline"
+                          className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[10px] px-1.5 py-0 h-4 font-normal"
+                          title={`There are ${t.duplicateCount} tourist records with this name`}
+                        >
+                          Duplicate Name
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell>{t.nationality ?? "—"}</TableCell>
                   <TableCell>{t.level ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">
@@ -1954,6 +1967,14 @@ export function TouristMgmtPage({ session }: { session?: StaffSession | null }) 
                 </div>
                 <StatusBadge status={viewing.status} />
               </div>
+              {viewing.isDuplicate && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                  <div>
+                    <span className="font-semibold">Duplicate Account Detected:</span> Another account exists with the name &ldquo;{viewing.name}&rdquo;. Please verify diver identity, contact info, and registration history.
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <Field label="Nationality" value={viewing.nationality ?? "—"} />
                 <Field label="Type of Dive" value={(viewing as any).type_of_dive || "Certified"} />

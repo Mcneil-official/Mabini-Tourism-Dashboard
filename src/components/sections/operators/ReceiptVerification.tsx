@@ -58,7 +58,7 @@ import { toast } from "sonner";
 import { Pagination, usePagination } from "@/components/ui/pagination";
 import { ReceiptLightbox } from "@/components/ReceiptLightbox";
 import { RejectReasonDialog } from "@/components/RejectReasonDialog";
-import { PassPricingEditor } from "@/components/sections/DivePassPage";
+import { PassPricingEditor, PaymentConfigEditor } from "@/components/sections/DivePassPage";
 import {
   StatCard,
   SectionCard,
@@ -476,6 +476,7 @@ export function ReceiptVerification() {
             </SelectContent>
           </Select>
           <PassPricingEditor />
+          <PaymentConfigEditor />
           {activeFilters.length > 0 && (
             <Button
               variant="ghost"
