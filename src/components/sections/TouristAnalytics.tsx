@@ -685,14 +685,14 @@ export function TouristAnalytics({ range }: { range: DateRange }) {
                   icon={CalendarClock}
                   label="Avg Planned Stay"
                   info="Average intended length of visit indicated by prospective divers using the Sinsay itinerary planner."
-                  value={`${prefs.avgStayDays} Days`}
+                  value={`${Math.round(prefs.avgStayDays)} Days`}
                   sample={isDemo}
                 />
                 <StatCard
                   icon={Users}
                   label="Avg Planned Group"
                   info="Average party size declared during trip planning (solo, buddies, or dive groups)."
-                  value={`${prefs.avgGroupSize} Divers`}
+                  value={`${Math.round(prefs.avgGroupSize)} Divers`}
                   sample={isDemo}
                 />
                 <StatCard

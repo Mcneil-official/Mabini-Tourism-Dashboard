@@ -356,8 +356,8 @@ export const DIVE_PLAN_STAY_DURATIONS = [
 export const mockTouristPreferences: TouristPreferenceMetrics = {
   totalPlans: 428,
   totalPlansPrev: 382,
-  avgStayDays: 2.8,
-  avgGroupSize: 2.6,
+  avgStayDays: 3,
+  avgGroupSize: 3,
   avgBudget: 8500,
   topActivity: "Fun / Reef Diving",
   activities: [
@@ -547,16 +547,14 @@ export function useTouristPreferences(range: DateRange) {
         const totalPlansPrev = prevRows.length;
 
         // 1. Average Group Size
-        const avgGroupSize =
-          Math.round(
-            (currentRows.reduce((sum, r) => sum + (Number(r.group_size) || 1), 0) / totalPlans) * 10
-          ) / 10;
+        const avgGroupSize = Math.round(
+          currentRows.reduce((sum, r) => sum + (Number(r.group_size) || 1), 0) / totalPlans
+        );
 
         // 2. Average Stay Days
-        const avgStayDays =
-          Math.round(
-            (currentRows.reduce((sum, r) => sum + parseStayDays(r.length_of_stay), 0) / totalPlans) * 10
-          ) / 10;
+        const avgStayDays = Math.round(
+          currentRows.reduce((sum, r) => sum + parseStayDays(r.length_of_stay), 0) / totalPlans
+        );
 
         // 3. Average Planned Budget (PHP)
         const validBudgets = currentRows
