@@ -156,7 +156,7 @@ async function fetchOperatorApplications(): Promise<LiveAppRow[]> {
   const { data: apps, error } = await supabase
     .from("operator_applications")
     .select(
-      "id, tourist_id, resort_name, resort_location, contact_number, business_permit_url, pcss_url, dot_accreditation_url, website, role, status, rejection_reason, created_at"
+      "id, tourist_id, resort_name, resort_location, contact_number, business_permit_url, pcss_url, dot_accreditation_url, website_url, role, status, rejection_reason, created_at"
     )
     .order("created_at", { ascending: false })
     .limit(200);
@@ -270,7 +270,7 @@ async function fetchReceipts(): Promise<LiveReceiptRow[]> {
   const { data: txs, error } = await supabase
     .from("payment_transactions")
     .select(
-      "id, dive_pass_inventory_id, operator_id, reference_number, amount, status, rejection_reason, receipt_image_url, created_at"
+      "id, dive_pass_inventory_id, operator_id, reference_number, amount, status, rejection_reason, receipt_url, created_at"
     )
     .order("created_at", { ascending: false })
     .limit(200);
@@ -390,7 +390,7 @@ async function fetchTourists(): Promise<LiveTouristRow[]> {
   const { data: rows, error } = await supabase
     .from("tourists")
     .select(
-      "id, full_name, email, nationality, certification_level, status, renewal_date, date_accredited, created_at, birthdate, sex, emergency_contact, emergency_phone, id_type, id_number, id_image_url, data_privacy_consent"
+      "id, full_name, email, contact_number, nationality, certification_level, status, renewal_date, date_accredited, created_at, sex, age, emergency_contact_name, emergency_contact_number, dive_pass_type, type_of_dive, pcssd_accreditation_no, pcssd_url, permit_to_operate_no, permit_to_operate_url, affiliated_operator, pro_verified, data_privacy_consent"
     )
     .order("created_at", { ascending: false })
     .limit(500);
@@ -712,7 +712,7 @@ export async function fetchManifestDivers(
   const { data, error } = await supabase
     .from("manifest_divers")
     .select(
-      "id, manifest_id, tourist_id, name, full_name, nationality, level, certification_level, created_at"
+      "id, manifest_id, tourist_id, name, eco_id, is_walk_in, created_at"
     )
     .eq("manifest_id", manifestId)
     .order("created_at", { ascending: true })
@@ -1188,7 +1188,7 @@ async function fetchDiveSites(): Promise<LiveSiteRow[]> {
   const { data: sites, error } = await supabase
     .from("dive_sites")
     .select(
-      "id, code, name, barangay, depth_range, current, difficulty, status, types, coordinates, created_at, photo_url"
+      "id, site_code, name, barangay, depth_range, difficulty, site_type, site_types, status, description, photo_url, lat, lng, created_at"
     )
     .order("name", { ascending: true })
     .limit(500);
